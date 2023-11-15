@@ -2,6 +2,17 @@
 
 import logging
 from typing import Dict
+import os
+from dotenv import load_dotenv
+load_dotenv()  # This loads the variables from .env
+
+
+from bot.support.handler import technical_support
+from bot.sms.handler import receive_sms, one_time_message_callback, unlimited_messages_callback, my_rented_numbers_callback
+from bot.profile.handler import my_profile, add_balance_callback
+from bot.start.handler import start
+
+from database.methods import FirebaseService
 
 from datetime import datetime
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -29,110 +40,12 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 # set higher logging level for httpx to avoid all GET and POST requests being logged
-logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger.setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
-# Start, show Greeting and an option to see the terms of use (button)
-async def start(update: Update, context: ContextTypes) -> None:
-    '''Start the conversation and offer options including terms of use, technical support, and profile access.'''
 
-    username = update.message.from_user.username
-    keyboard = [
-        ["Receive SMS"],  # First row with one button
-        ["My Profile", "Technical Support"] # Second row with two buttons
-    ]
-
-    #for test add user to db
-    await add_test_user_to_db(update, context)
     
-    await update.message.reply_text(
-        f"Hi {username}! I'm a bot that can help you to receive an SMS to a REAL USA phone number.\n\n"
-        "Choose an option from below.",
-        reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=False, resize_keyboard=True),
-    )
-    
-async def receive_sms(update: Update, context: ContextTypes) -> None:
-    # Logic for receiving SMS
-    keyboard = [
-        [InlineKeyboardButton("One-time message", callback_data='one_time_message')],
-        [InlineKeyboardButton("Rent Phone Number", callback_data='unlimited_messages')],
-        [InlineKeyboardButton("My Rented Numbers", callback_data='my_rented_numbers')]
-    ]
-    
-    await update.message.reply_text(
-        "Choose an option from below.",
-        reply_markup=InlineKeyboardMarkup(keyboard),
-    )
-    
-async def one_time_message_callback(update: Update, context: ContextTypes) -> None:
-    # Logic for one-time message
-    query = update.callback_query
-    await query.answer()  # This is necessary to acknowledge the callback
-    await query.edit_message_text("One-time message functionality coming soon.")
-    
-async def unlimited_messages_callback(update: Update, context: ContextTypes) -> None:
-    # Logic for unlimited messages
-    query = update.callback_query
-    await query.answer()  # This is necessary to acknowledge the callback
-    await query.edit_message_text("Unlimited messages functionality coming soon.")
-    
-async def my_rented_numbers_callback(update: Update, context: ContextTypes) -> None:
-    # Logic for my rented numbers
-    query = update.callback_query
-    await query.answer()  # This is necessary to acknowledge the callback
-    await query.edit_message_text("My rented numbers functionality coming soon.")
-    
-
-async def my_profile(update: Update, context: ContextTypes) -> None:
-    # Fetch the user ID
-    user_id = update.effective_user.id
-
-    # Create an inline keyboard with one button for adding balance
-    keyboard = [
-        [InlineKeyboardButton("Add Balance", callback_data='add_balance')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    # Send a message with the user's ID and the inline keyboard
-    await update.message.reply_text(
-        f"Your ID is: {user_id}\n\nClick below to add balance:",
-        reply_markup=reply_markup
-    )
-    
-async def add_balance_callback(update: Update, context: ContextTypes) -> None:
-    # Logic for adding balance
-    query = update.callback_query
-    await query.answer()  # This is necessary to acknowledge the callback
-    await query.edit_message_text("Add balance functionality coming soon.")
-
-
-async def technical_support(update: Update, context: ContextTypes) -> None:
-    # Path to your local image file
-    image_path = './test_photo.png'
-
-    # Create an inline keyboard with one button for contacting support
-    keyboard = [
-        [InlineKeyboardButton("Contact Support", url="https://t.me/x0nescam")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    # Enhanced message with Markdown formatting
-    message = (
-        "*Technical Support*\n"
-        "If you have any questions or need assistance, please feel free to reach out to our support team.\n\n"
-        "For common issues, you can also check our FAQ section."
-    )
-
-    # Send a photo with the message and inline keyboard
-    with open(image_path, 'rb') as photo:
-        await update.message.reply_photo(
-            photo=photo,
-            caption=message,
-            parse_mode=ParseMode.MARKDOWN,
-            reply_markup=reply_markup
-        )
-        
 async def add_test_user_to_db(update: Update, context: ContextTypes) -> None:
     user_id = str(update.effective_user.id)  # Convert user ID to string
 
@@ -210,15 +123,16 @@ async def add_test_user_to_db(update: Update, context: ContextTypes) -> None:
     # Adding the test user with nested transactions and orders
     users_ref.child(user_id).set(test_user)
 
+db = FirebaseService(database_url=f'{os.getenv("FIREBASE_URL")}', credential_path=f'{os.getenv("FIREBASE_ACCESS_JSON_PATH")}')
 
 def main() -> None:
     """Run the bot."""
     # Create the Application and pass it your bot's token.
+
+    logger.info("Starting bot")
+
+    application = Application.builder().token(os.getenv("BOT_TOKEN")).build()
     
-    
-    
-  
-    application = Application.builder().token("6949445845:AAG9NOA0stm-nD9g2FgN8mMS3DWW7dmXzu0").build()
     
     application.add_handler(CommandHandler("start", start))
     
@@ -235,8 +149,6 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(unlimited_messages_callback, pattern='^unlimited_messages$'))
     application.add_handler(CallbackQueryHandler(my_rented_numbers_callback, pattern='^my_rented_numbers$'))
     
-    
-
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
