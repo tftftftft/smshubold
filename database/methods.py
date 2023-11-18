@@ -3,8 +3,12 @@ import logging
 import firebase_admin
 from firebase_admin import db
 from typing import TypeVar, Type, Optional
+import os
+
 
 logger = logging.getLogger(__name__)
+
+
 
 
 # Generic type for model classes
@@ -41,3 +45,7 @@ class FirebaseService:
     def delete(self, ref: str, key: str) -> None:
         """ Delete data from the specified reference and key. """
         db.reference(f'{ref}/{key}').delete()
+
+
+
+firebase_conn = FirebaseService(database_url=f'{os.getenv("FIREBASE_URL")}', credential_path=f'{os.getenv("FIREBASE_ACCESS_JSON_PATH")}')

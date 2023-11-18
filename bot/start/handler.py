@@ -4,9 +4,9 @@ from telegram.ext import (
     ContextTypes,
 )
 
-from models import User
+from models.models import User
 
-from main import db
+from database.methods import firebase_conn
 
 
 
@@ -22,9 +22,10 @@ async def start(update: Update, context: ContextTypes) -> None:
     ]
     
     # Add user to database if it doesn't exist
-    if db.exists is not False:
+    if firebase_conn.exists('users', userid) is False:
         user = User(balance=0)
-        db.add('users', 'user_id', user)
+        print(userid)
+        firebase_conn.add('users', userid, user)
     
     await update.message.reply_text(
         f"Hi {username}! I'm a bot that can help you to receive an SMS to a REAL USA phone number.\n\n"
