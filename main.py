@@ -10,11 +10,8 @@ from bot.sms.handler import receive_sms, one_time_message_callback, unlimited_me
 from bot.profile.handler import my_profile, add_balance_callback
 from bot.start.handler import start
 
-from database.methods import FirebaseService
 
-from datetime import datetime
-from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.constants import ParseMode
+from telegram import Update
 from telegram.ext import (
     Application,
     CommandHandler,
