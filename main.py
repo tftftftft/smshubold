@@ -7,8 +7,11 @@ load_dotenv()  # This loads the variables from .env
 
 from bot.support.handler import technical_support
 from bot.sms.handler import receive_sms, one_time_message_callback, unlimited_messages_callback, my_rented_numbers_callback
-from bot.profile.handler import my_profile, add_balance_callback
+# from bot.profile.handler import my_profile, add_balance_callback
+from bot.profile.handler import deposit_conv, my_profile
 from bot.start.handler import start
+
+
 
 
 from telegram import Update
@@ -52,8 +55,10 @@ def main() -> None:
 
     
     #profile callback
-    application.add_handler(CallbackQueryHandler(add_balance_callback, pattern='^add_balance$'))
+    # application.add_handler(CallbackQueryHandler(add_balance_callback, pattern='^add_balance$'))
+    application.add_handler(deposit_conv)
     
+        
     # sms callbacks
     application.add_handler(CallbackQueryHandler(one_time_message_callback, pattern='^one_time_message$'))
     application.add_handler(CallbackQueryHandler(unlimited_messages_callback, pattern='^unlimited_messages$'))
