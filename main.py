@@ -11,8 +11,9 @@ from bot.sms.handler import receive_sms, one_time_message_callback, unlimited_me
 from bot.profile.handler import deposit_conv, my_profile
 from bot.start.handler import start
 
+from services.smspool_objects import sms_pool
 
-
+import asyncio
 
 from telegram import Update
 from telegram.ext import (
@@ -43,6 +44,15 @@ def main() -> None:
     # Create the Application and pass it your bot's token.
 
     logger.info("Starting bot")
+    
+    sms_pool.get_service_list()
+    
+    asyncio.sleep(5)
+    
+    sms_pool.order_sms('US', 'Facebook', 0, 1, 0)
+
+    asyncio.sleep(5)
+
 
     application = Application.builder().token(os.getenv("BOT_TOKEN")).build()
     
