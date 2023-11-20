@@ -6,7 +6,7 @@ load_dotenv()  # This loads the variables from .env
 
 
 from bot.support.handler import technical_support
-from bot.sms.handler import receive_sms, one_time_message_callback, unlimited_messages_callback, my_rented_numbers_callback
+from bot.sms.handler import receive_sms, one_time_message_callback, unlimited_messages_callback, my_rented_numbers_callback, otp_conv
 # from bot.profile.handler import my_profile, add_balance_callback
 from bot.profile.handler import deposit_conv, my_profile
 from bot.start.handler import start
@@ -44,16 +44,7 @@ def main() -> None:
     # Create the Application and pass it your bot's token.
 
     logger.info("Starting bot")
-    
-    sms_pool.get_service_list()
-    
-    asyncio.sleep(5)
-    
-    sms_pool.order_sms('US', 'Facebook', 0, 1, 0)
-
-    asyncio.sleep(5)
-
-
+  
     application = Application.builder().token(os.getenv("BOT_TOKEN")).build()
     
     
@@ -67,6 +58,9 @@ def main() -> None:
     #profile callback
     # application.add_handler(CallbackQueryHandler(add_balance_callback, pattern='^add_balance$'))
     application.add_handler(deposit_conv)
+    
+    #otp convo
+    application.add_handler(otp_conv)
     
         
     # sms callbacks

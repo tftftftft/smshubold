@@ -52,10 +52,10 @@ async def ask_amount(update: Update, context: ContextTypes) -> int:
     return ASK_CRYPTO
 
 async def ask_crypto(update: Update, context: ContextTypes) -> int:
-    """Store the amount and ask for the cryptocurrency."""
+    """ask for the cryptocurrency."""
+
     amount = update.message.text
     context.user_data['amount'] = amount  # Add validation here if needed
-
     # Directly ask for cryptocurrency
     keyboard = [
         [InlineKeyboardButton("BTC", callback_data='BTC'), InlineKeyboardButton("USDT TRC20", callback_data='USDT_TRC20'), InlineKeyboardButton("LTC", callback_data='LTC')],
