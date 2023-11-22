@@ -35,16 +35,91 @@ class FirebaseService:
         """ Update data at the specified reference and key. """
         db.reference(f'{ref}/{key}').update(data)
 
-    def get(self, ref: str, key: str, cls: Type[T]) -> Optional[T]:
+    def get(self, ref: str, key: str) -> Optional[T]:
         """ Retrieve data from the specified reference and key. """
         data = db.reference(f'{ref}/{key}').get()
-        if data:
-            return cls(**data)
-        return None
-
+        return data
+    
     def delete(self, ref: str, key: str) -> None:
         """ Delete data from the specified reference and key. """
         db.reference(f'{ref}/{key}').delete()
+        
+    def add_balance(self, user_id: str, amount: float) -> bool:
+        """Add the specified amount to the user's balance."""
+
+        # Define the reference and key for the user's balance
+        ref = 'users'
+        key = f'{user_id}/balance'
+
+        # Retrieve the current balance
+        current_balance = self.get(ref, key)
+        if current_balance is None:
+            print(f"User {user_id} not found or balance not set.")
+            return False
+        print(f"Current balance: {current_balance}")
+
+        try:
+            amount_float = float(amount)
+        except ValueError:
+            print(f"Amount {amount} is not a valid number.")
+            return False
+
+        # Calculate the new balance
+        new_balance = current_balance + amount_float
+        self.update(ref, user_id, {'balance': new_balance})
+
+        return True
+    
+    def decrease_balance(self, user_id: str, amount: float) -> bool:
+        """Decrease the specified amount from the user's balance."""
+
+        # Define the reference and key for the user's balance
+        ref = 'users'
+        key = f'{user_id}/balance'
+
+        # Retrieve the current balance
+        current_balance = self.get(ref, key)
+        if current_balance is None:
+            print(f"User {user_id} not found or balance not set.")
+            return False
+        print(f"Current balance: {current_balance}")
+
+        try:
+            amount_float = float(amount)
+        except ValueError:
+            print(f"Amount {amount} is not a valid number.")
+            return False
+
+        # Calculate the new balance
+        new_balance = current_balance - amount_float
+        self.update(ref, user_id, {'balance': new_balance})
+
+        return True
+    
+    def check_if_enough_balance(self, user_id: str, amount: float) -> bool:
+        """Check if the user has enough balance for the specified amount."""
+        
+        # Define the reference and key for the user's balance
+        ref = 'users'
+        key = f'{user_id}/balance'
+
+        # Retrieve the current balance
+        current_balance = self.get(ref, key)
+        if current_balance is None:
+            print(f"User {user_id} not found or balance not set.")
+            return False
+        print(f"Current balance: {current_balance}")
+
+        try:
+            amount_float = float(amount)
+        except ValueError:
+            print(f"Amount {amount} is not a valid number.")
+            return False
+        
+        if current_balance >= amount_float:
+            return True
+        else:
+            return False
 
 
 

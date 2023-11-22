@@ -55,7 +55,7 @@ class SMSPool:
     # --form 'quantity=""' \ Quantity of numbers ordered
     # --form 'create_token=""' Optional param; set to 1 if you'd like to create a token link that anyone can access.
 
-    def order_sms(self, country: str, service: str, pricing_option: Pricing_Options, quantity: int, create_token: int) -> dict:
+    def order_sms(self, country: str, service: str, pricing_option: int, quantity: int, create_token: int) -> dict:
         url = self.construct_url('purchase/sms', params={'key': self.api_key, 'country': country, 'service': service, 'pricing_option': pricing_option, 'quantity': quantity, 'create_token': create_token})
         response = requests.post(url)
         print(response.json())
@@ -92,6 +92,7 @@ class SMSPool:
         response = requests.post(url)
         print(response.json())
         return response.json()
+    
     def retrive_rentals_not_extendable(self) -> dict:
         url = self.construct_url('rental/retrieve_all', params={'key': self.api_key, 'type': 0})
         response = requests.post(url)

@@ -1,4 +1,5 @@
 from datetime import datetime
+import asyncio
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import (
@@ -13,12 +14,14 @@ from telegram.ext import (
 
 )
 
+from services.smspool_objects import sms_pool
+
 
 async def receive_sms(update: Update, context: ContextTypes) -> None:
     # Logic for receiving SMS
     keyboard = [
         [InlineKeyboardButton("One-time message", callback_data='one_time_message')],
-        [InlineKeyboardButton("Rent Phone Number", callback_data='unlimited_messages')],
+        [InlineKeyboardButton("Rent Phone Number", callback_data='rent_number')],
         [InlineKeyboardButton("My Rented Numbers", callback_data='my_rented_numbers')]
     ]
     
@@ -29,72 +32,46 @@ async def receive_sms(update: Update, context: ContextTypes) -> None:
     
     
     
+#####rental
 
-#####################
+# 1. Message saying that only 30 days rental is available | any service
+# 2. Activate and show the number
 
 cancel_button = [
-    [InlineKeyboardButton("Cancel", callback_data='Cancel')]
+    [InlineKeyboardButton("Cancel", callback_data='cancel_action')]
 ]
 
-ASK_SERVICE_NAME, CONFIRMATION, ORDER_PHONE_NUMBER_OTP = range(3)
+rental_faq_button = [
+    [InlineKeyboardButton("Buy", callback_data='buy_rental')],
+    [InlineKeyboardButton("Cancel", callback_data='cancel_action')]
+]
 
-async def one_time_message_callback(update: Update, context: ContextTypes) -> None:
-    # Logic for one-time message
-    query = update.callback_query
-    await query.answer()  # This is necessary to acknowledge the callback
-    await query.edit_message_text("One-time message functionality coming soon.")
-    
-    
-    
-    
-async def ask_for_service_name(update: Update, context: ContextTypes) -> int:
+RENTAL_FAQ, RENTAL_CONFIRMATION, RENTAL_FINAL = range(3)
+
+async def rental_faq(update: Update, context: ContextTypes) -> int:
     
     query = update.callback_query
     await query.answer()
     await query.edit_message_text(
-        "Please enter service name (Gmail) or 0 if can't find the service:",
-        reply_markup=InlineKeyboardMarkup(cancel_button)
+        "Only 30 days rental is available for any service.",
+        reply_markup=InlineKeyboardMarkup(rental_faq_button)
     )
     
-    
-    
-    return CONFIRMATION
+    return RENTAL_FINAL
 
-async def otp_confirmation(update: Update, context: ContextTypes) -> int:
-    
-    ### check if service name is valid
-    ### check price of service
-    
-    service_name = update.message.text
-    context.user_data['service_name'] = service_name
-    
-    
-    keyboard = [[InlineKeyboardButton("Yes", callback_data='yes_confirmation_otp'), InlineKeyboardButton("No", callback_data='no_confirmation_otp')]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await update.message.reply_text(
-        f"The service {context.user_data['service_name']} costs $1. Do you want to proceed?",
-        reply_markup=reply_markup
-    )
-    
-    return ORDER_PHONE_NUMBER_OTP
-    
-    
-async def order_phone_number_otp(update: Update, context: ContextTypes) -> int:
-    ##placeholder
+async def rental_final(update: Update, context: ContextTypes) -> int:
     
     query = update.callback_query
     await query.answer()
     
-    await query.message.edit_text(
-        "Please wait while we order a phone number for you."    
+    await query.edit_message_text(
+        "Your number will be activated within 24 hours.",
+        reply_markup=InlineKeyboardMarkup(cancel_button)
     )
     
-    
-    
     return ConversationHandler.END
-    
-    
+
+
 async def cancel(update: Update, context: ContextTypes) -> int:
     """End the conversation."""
     print('cancel')
@@ -105,19 +82,19 @@ async def cancel(update: Update, context: ContextTypes) -> int:
     await query.message.edit_text(
         "Canceled"
     )
-    return ConversationHandler.END
+
+    return await rental_faq(update, context)
 
 
     
-otp_conv = ConversationHandler(
-    entry_points=[CallbackQueryHandler(ask_for_service_name, pattern='^one_time_message$')],
+rental_conv = ConversationHandler(
+    entry_points=[CallbackQueryHandler(rental_faq, pattern='^rent_number$')],
+    conversation_timeout=30,  # Timeout after 5 minutes of inactivity
     states={
-        CONFIRMATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, otp_confirmation)],
-        ORDER_PHONE_NUMBER_OTP: [CallbackQueryHandler(order_phone_number_otp, pattern='^yes_confirmation_otp$')]
+        RENTAL_FINAL: [CallbackQueryHandler(rental_final, pattern='^buy_rental$')]
     },
     fallbacks=[
-        MessageHandler(filters.Regex("^Cancel$"), cancel),
-        CallbackQueryHandler(cancel, pattern='^no_confirmation_otp$')
+        CallbackQueryHandler(cancel, pattern='^cancel_action$')
     ]
 )
     

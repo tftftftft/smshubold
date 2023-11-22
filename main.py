@@ -6,7 +6,8 @@ load_dotenv()  # This loads the variables from .env
 
 
 from bot.support.handler import technical_support
-from bot.sms.handler import receive_sms, one_time_message_callback, unlimited_messages_callback, my_rented_numbers_callback, otp_conv
+from bot.sms.handler import receive_sms, unlimited_messages_callback, my_rented_numbers_callback, rental_conv
+from bot.sms.otp_handler import otp_conv
 # from bot.profile.handler import my_profile, add_balance_callback
 from bot.profile.handler import deposit_conv, my_profile
 from bot.start.handler import start
@@ -62,9 +63,11 @@ def main() -> None:
     #otp convo
     application.add_handler(otp_conv)
     
+    #rental convo
+    application.add_handler(rental_conv)
         
     # sms callbacks
-    application.add_handler(CallbackQueryHandler(one_time_message_callback, pattern='^one_time_message$'))
+
     application.add_handler(CallbackQueryHandler(unlimited_messages_callback, pattern='^unlimited_messages$'))
     application.add_handler(CallbackQueryHandler(my_rented_numbers_callback, pattern='^my_rented_numbers$'))
     

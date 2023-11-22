@@ -10,7 +10,12 @@ from telegram.ext import (
     CallbackQueryHandler,
 )
 
+from models.models import User
+
+from  database.methods import firebase_conn
+
 import asyncio
+
 
 
 ASK_CRYPTO, PROCESSING_CRYPTO = range(2)
@@ -38,24 +43,40 @@ async def my_profile(update: Update, context: ContextTypes) -> None:
 
 async def ask_amount(update: Update, context: ContextTypes) -> int:
     """Start the deposit process and ask user for the amount."""
-
-    print('start_deposit')
     
     query = update.callback_query
     await query.answer()
     
+    ###keyboard for deposit
+    keyboard = [
+        [InlineKeyboardButton("10$", callback_data='10'), InlineKeyboardButton("20$", callback_data='20'), InlineKeyboardButton("50$", callback_data='50')],
+        [InlineKeyboardButton("100$", callback_data='100'), InlineKeyboardButton("200$", callback_data='200'), InlineKeyboardButton("500$", callback_data='500')],
+        [InlineKeyboardButton("Cancel", callback_data='Cancel')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
     # Use query.message.reply_text to send a new message
-    await query.edit_message_text(
-        "Please enter the amount you would like to deposit in $:",
-        reply_markup=InlineKeyboardMarkup(cancel_button)
+    await query.message.edit_text(
+        "Please choose the amount you would like to deposit",
+        reply_markup=reply_markup
     )
     return ASK_CRYPTO
 
 async def ask_crypto(update: Update, context: ContextTypes) -> int:
     """ask for the cryptocurrency."""
 
-    amount = update.message.text
-    context.user_data['amount'] = amount  # Add validation here if needed
+    # amount = update.message.text
+    # context.user_data['amount'] = amount  # Add validation here if needed
+    
+    query = update.callback_query
+    await query.answer()
+    
+    amount = query.data
+    context.user_data['amount'] = amount
+    
+    print(context.user_data['amount'])
+
+    
     # Directly ask for cryptocurrency
     keyboard = [
         [InlineKeyboardButton("BTC", callback_data='BTC'), InlineKeyboardButton("USDT TRC20", callback_data='USDT_TRC20'), InlineKeyboardButton("LTC", callback_data='LTC')],
@@ -63,7 +84,7 @@ async def ask_crypto(update: Update, context: ContextTypes) -> int:
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
         
-    await update.message.reply_text(
+    await query.message.edit_text(
         "Which cryptocurrency would you like to use for the deposit?",
         reply_markup=reply_markup
     )
@@ -72,40 +93,43 @@ async def ask_crypto(update: Update, context: ContextTypes) -> int:
 
 async def process_crypto(update: Update, context: ContextTypes) -> int:
     """Ask the user which cryptocurrency they want to use for the deposit."""
-    print('ask_crypto')
     
     query = update.callback_query
     await query.answer()
     
     #what crypto chosen
     crypto = query.data
-    print(crypto, "chosen")
     
     #get usd amount based on crypto
     #generate crypto address
 
     crypto_address = "address"
     
-
+    
+    ###generate invoice
        
     await query.message.edit_text(
         f"Please send {context.user_data['amount']} {crypto} to the following address: {crypto_address}",
         reply_markup=InlineKeyboardMarkup(cancel_button)
     )
     
-    await asyncio.sleep(5)
-    #wait for callback from gateway
-    #imitate for now
-    await query.message.edit_text(
-        "Please wait for the transaction to be confirmed."
-    )
+    ###wait for callback from gateway
+    asyncio.sleep(5)
     
-    await asyncio.sleep(5)
-    
-    await query.message.edit_text(
-        "Your deposit has been confirmed."        
-    )
+    ###when callback received - add balance to user and update balance in db
+    #get user id
+    user_id = str(update.effective_user.id)
+    result = firebase_conn.add_balance(user_id, context.user_data['amount'])
 
+    if result:
+        await query.message.edit_text(
+            "Your deposit has been confirmed."        
+        )
+    else:
+        await query.message.edit_text(
+            "There was an error processing your deposit. Please try again later or contact support."        
+        )
+    
     return ConversationHandler.END
 
 
@@ -132,7 +156,7 @@ deposit_conv = ConversationHandler(
         CallbackQueryHandler(ask_amount, pattern='^Deposit$'),
     ],
     states={
-        ASK_CRYPTO: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_crypto)],
+        ASK_CRYPTO: [CallbackQueryHandler(ask_crypto, pattern='^(10|20|50|100|200|500)$')],
         PROCESSING_CRYPTO: [CallbackQueryHandler(process_crypto, pattern='^(BTC|USDT_TRC20|LTC)$')],
     },
     fallbacks=[CallbackQueryHandler(cancel, pattern='^Cancel$'), MessageHandler(filters.ALL, unexpected_message)],
