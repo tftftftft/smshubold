@@ -161,7 +161,7 @@ async def order_phone_number_otp(update: Update, context: ContextTypes) -> int:
         await asyncio.sleep(5)
         
         remaining_time = await update_message()
-        if remaining_time <= 0:
+        if remaining_time <= 15:
             await query.message.edit_text("The OTP has expired.")
             break
 
