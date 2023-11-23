@@ -5,6 +5,7 @@ from telegram.ext import (
 
 )
 
+from bot.start.handler import menu
 
 async def technical_support(update: Update, context: ContextTypes) -> None:
     # Path to your local image file
@@ -12,7 +13,8 @@ async def technical_support(update: Update, context: ContextTypes) -> None:
 
     # Create an inline keyboard with one button for contacting support
     keyboard = [
-        [InlineKeyboardButton("Contact Support", url="https://t.me/x0nescam")]
+        [InlineKeyboardButton("Contact Support", url="https://t.me/x0nescam")],
+        [InlineKeyboardButton("Back to Menu", callback_data='menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 

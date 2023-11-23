@@ -10,7 +10,7 @@ from bot.sms.handler import receive_sms, unlimited_messages_callback, my_rented_
 from bot.sms.otp_handler import otp_conv
 # from bot.profile.handler import my_profile, add_balance_callback
 from bot.profile.handler import deposit_conv, my_profile
-from bot.start.handler import start
+from bot.start.handler import start, menu
 
 from services.smspool_objects import sms_pool
 
@@ -50,6 +50,8 @@ def main() -> None:
     
     
     application.add_handler(CommandHandler("start", start))
+    
+    application.add_handler(CallbackQueryHandler(menu, pattern='^menu$'))
     
     application.add_handler(MessageHandler(filters.Regex("^Receive SMS$"), receive_sms))
     application.add_handler(MessageHandler(filters.Regex("^My Profile$"), my_profile))

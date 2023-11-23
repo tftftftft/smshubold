@@ -14,6 +14,8 @@ from models.models import User
 
 from  database.methods import firebase_conn
 
+from bot.start.handler import menu, light_menu
+
 import asyncio
 
 
@@ -30,7 +32,8 @@ async def my_profile(update: Update, context: ContextTypes) -> None:
 
     # Create an inline keyboard with one button for adding balance
     keyboard = [
-        [InlineKeyboardButton("Add Balance", callback_data='Deposit')]
+        [InlineKeyboardButton("Add Balance", callback_data='Deposit')],
+        [InlineKeyboardButton("Back to Menu", callback_data='menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -130,6 +133,9 @@ async def process_crypto(update: Update, context: ContextTypes) -> int:
             "There was an error processing your deposit. Please try again later or contact support."        
         )
     
+    await light_menu(update, context)
+    
+    
     return ConversationHandler.END
 
 
@@ -143,6 +149,9 @@ async def cancel(update: Update, context: ContextTypes) -> int:
     await query.message.edit_text(
         "Canceled"
     )
+    
+    await menu(update, context)
+    
     return ConversationHandler.END
 
 async def unexpected_message(update: Update, context: ContextTypes) -> int:

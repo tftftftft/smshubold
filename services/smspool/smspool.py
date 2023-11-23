@@ -71,9 +71,27 @@ class SMSPool:
         print(response.json())
         return response.json()
     
+    
+    # Resend
+    # Resend the order. Keep in mind that some pools will have a charge per resend.
+
+    # Responses
+    # | Success | {"success":1,"message":"Number has been requested again","resend":0} |
+    # | Fail | {"success":0,"message":"Phonenumber could not be requested again, try later again.","resend":0} |
+    #     curl --location 'https://api.smspool.net/sms/resend' \
+    # --form 'orderid=""' \
+    # --form 'key="Your API key"'
+    
     #     curl --location 'https://api.smspool.net/sms/cancel' \
     # --form 'orderid=""' \
     # --form 'key="Your API key"'
+    def resend(self, orderid: str) -> dict:
+        url = self.construct_url('sms/resend', params={'key': self.api_key, 'orderid': orderid})
+        response = requests.post(url)
+        print(response.json())
+        return response.json()
+    
+    
     
     def cancel_sms(self, orderid: str) -> dict:
         url = self.construct_url('sms/cancel', params={'key': self.api_key, 'orderid': orderid})

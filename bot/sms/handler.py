@@ -16,13 +16,22 @@ from telegram.ext import (
 
 from services.smspool_objects import sms_pool
 
+cancel_button = [
+    [InlineKeyboardButton("Cancel", callback_data='cancel_action')]
+]
+
+rental_faq_button = [
+    [InlineKeyboardButton("Buy", callback_data='buy_rental')],
+    [InlineKeyboardButton("Cancel", callback_data='cancel_action')]
+]
 
 async def receive_sms(update: Update, context: ContextTypes) -> None:
     # Logic for receiving SMS
     keyboard = [
         [InlineKeyboardButton("One-time message", callback_data='one_time_message')],
         [InlineKeyboardButton("Rent Phone Number", callback_data='rent_number')],
-        [InlineKeyboardButton("My Rented Numbers", callback_data='my_rented_numbers')]
+        [InlineKeyboardButton("My Rented Numbers", callback_data='my_rented_numbers')],
+        [InlineKeyboardButton("Back to Menu", callback_data='menu')]
     ]
     
     await update.message.reply_text(
@@ -37,14 +46,6 @@ async def receive_sms(update: Update, context: ContextTypes) -> None:
 # 1. Message saying that only 30 days rental is available | any service
 # 2. Activate and show the number
 
-cancel_button = [
-    [InlineKeyboardButton("Cancel", callback_data='cancel_action')]
-]
-
-rental_faq_button = [
-    [InlineKeyboardButton("Buy", callback_data='buy_rental')],
-    [InlineKeyboardButton("Cancel", callback_data='cancel_action')]
-]
 
 RENTAL_FAQ, RENTAL_CONFIRMATION, RENTAL_FINAL = range(3)
 
@@ -83,7 +84,9 @@ async def cancel(update: Update, context: ContextTypes) -> int:
         "Canceled"
     )
 
-    return await rental_faq(update, context)
+
+
+    return ConversationHandler.END
 
 
     

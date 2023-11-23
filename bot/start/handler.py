@@ -8,7 +8,10 @@ from models.models import User
 
 from database.methods import firebase_conn
 
-
+keyboard = [
+        ["Receive SMS"],  # First row with one button
+        ["My Profile", "Technical Support"] # Second row with two buttons
+    ]
 
 # Start, show Greeting and an option to see the terms of use (button)
 async def start(update: Update, context: ContextTypes) -> None:
@@ -16,10 +19,6 @@ async def start(update: Update, context: ContextTypes) -> None:
 
     username = update.message.from_user.username
     userid = update.message.from_user.id
-    keyboard = [
-        ["Receive SMS"],  # First row with one button
-        ["My Profile", "Technical Support"] # Second row with two buttons
-    ]
     
     # Add user to database if it doesn't exist
     if firebase_conn.exists('users', userid) is False:
@@ -30,5 +29,31 @@ async def start(update: Update, context: ContextTypes) -> None:
     await update.message.reply_text(
         f"Hi {username}! I'm a bot that can help you to receive an SMS to a REAL USA phone number.\n\n"
         "Choose an option from below.",
-        reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=False, resize_keyboard=True),
+        reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True),
+    )
+    
+async def menu(update: Update, context: ContextTypes) -> None:
+    '''Show the menu again.'''
+    print("menu")
+    query = update.callback_query
+    await query.answer()
+    
+    ###delete previous message
+    await query.message.delete()
+    
+    await query.message.reply_text(
+        "Choose an option from below.",
+        reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True),
+    )
+
+###menu without deleting previous message
+async def light_menu(update: Update, context: ContextTypes) -> None:
+    '''Show the menu again.'''
+    print("light menu")
+    query = update.callback_query
+    await query.answer()
+     
+    await query.message.reply_text(
+        "Choose an option from below.",
+        reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True),
     )
