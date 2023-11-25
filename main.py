@@ -70,7 +70,7 @@ def main() -> None:
         
     # sms callbacks
 
-    application.add_handler(CallbackQueryHandler(unlimited_messages_callback, pattern='^unlimited_messages$'))
+
     application.add_handler(CallbackQueryHandler(my_rented_numbers_callback, pattern='^my_rented_numbers$'))
     
     # Run the bot until the user presses Ctrl-C
