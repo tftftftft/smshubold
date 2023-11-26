@@ -6,13 +6,15 @@ load_dotenv()  # This loads the variables from .env
 
 
 from bot.support.handler import technical_support
-from bot.sms.handler import receive_sms, unlimited_messages_callback, my_rented_numbers_callback, rental_conv
+from bot.sms.handler import receive_sms, my_rented_numbers_callback, rented_number_callback, rental_history, rental_conv
 from bot.sms.otp_handler import otp_conv
 # from bot.profile.handler import my_profile, add_balance_callback
 from bot.profile.handler import deposit_conv, my_profile
 from bot.start.handler import start, menu
 
 from services.smspool_objects import sms_pool
+from database.methods import firebase_conn
+
 
 import asyncio
 
@@ -45,10 +47,13 @@ def main() -> None:
     # Create the Application and pass it your bot's token.
 
     logger.info("Starting bot")
+    
+    
   
     application = Application.builder().token(os.getenv("BOT_TOKEN")).build()
     
-    
+   
+
     application.add_handler(CommandHandler("start", start))
     
     application.add_handler(CallbackQueryHandler(menu, pattern='^menu$'))
@@ -72,6 +77,8 @@ def main() -> None:
 
 
     application.add_handler(CallbackQueryHandler(my_rented_numbers_callback, pattern='^my_rented_numbers$'))
+    application.add_handler(CallbackQueryHandler(rental_history, pattern='^rental_messages_history_.*$'))
+    application.add_handler(CallbackQueryHandler(rented_number_callback, pattern='^rented_number_.*$'))
     
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES)

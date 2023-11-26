@@ -19,12 +19,14 @@ async def start(update: Update, context: ContextTypes) -> None:
 
     username = update.message.from_user.username
     userid = update.message.from_user.id
+    print(userid)
+    # print(context.user_data['rental_type'])
     
     # Add user to database if it doesn't exist
     if firebase_conn.exists('users', userid) is False:
         user = User(balance=0)
         print(userid)
-        firebase_conn.add('users', userid, user)
+        firebase_conn.add('users', userid, user.to_dict())
     
     await update.message.reply_text(
         f"Hi {username}! I'm a bot that can help you to receive an SMS to a REAL USA phone number.\n\n"

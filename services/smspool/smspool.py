@@ -128,6 +128,13 @@ class SMSPool:
         print(response.json())
         return response.json()
     
+    #response example:
+    # {'success': 1, 'message': 'You have ordered a rental, it will be issued instantly.', 'phonenumber': '16809101906', 'days': 30, 'rental_code': '7xabp0RL', 'expiry': 1703552020}
+    
+    #order any service rental - order_rental(6, 30)
+    #order service not listed rental - order_rental(7, 30, 817)
+    #order specific service rental - order_rental(7, 30, X)
+    
     #     curl --location 'https://api.smspool.net/rental/extend' \
     # --form 'key="Your API key"' \
     # --form 'days="30"' \

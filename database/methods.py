@@ -22,10 +22,13 @@ class FirebaseService:
 
     def add(self, ref: str, key: str, data: T) -> bool:
         """ Add data to the specified reference and key if it doesn't already exist. """
-
-        # If the record does not exist, add it
-        db.reference(f'{ref}/{key}').set(data.to_dict())
-        return True
+        try:
+            # If the record does not exist, add it
+            db.reference(f'{ref}/{key}').set(data)
+            return True
+        except Exception as e:
+            logger.error(f'Error adding data to Firebase: {e}')
+            return False
 
     def exists(self, ref: str, key: str) -> bool:
         """ Check if a record exists at the specified reference and key. """
@@ -121,6 +124,39 @@ class FirebaseService:
         else:
             return False
 
+    ### RENTAL METHODS ###
+    def add_rental(self, user_id: str, rental_id: str, rental_data: dict) -> bool:
+        """Add the rental data to the user's rental list."""
+        
+        # Define the reference and key for the user's rental list
+        ref = 'users'
+        key = f'{user_id}/rentals/{rental_id}'
+        
+        # Add the rental data
+        return self.add(ref, key, rental_data)
+    
+    def get_rentals(self, user_id: str) -> dict:
+        """Retrieve the user's rental list."""
+        
+        # Define the reference and key for the user's rental list
+        ref = 'users'
+        key = f'{user_id}/rentals'
+        
+        # Retrieve the rental list
+        return self.get(ref, key)
+    
+    def get_rental_by_id(self, user_id: str, rental_id: str) -> dict:
+        """Retrieve the rental data by rental ID."""
+        
+        # Define the reference and key for the user's rental list
+        ref = 'users'
+        key = f'{user_id}/rentals/{rental_id}'
+        
+        # Retrieve the rental data
+        return self.get(ref, key)
+        
+
+    
 
 
 firebase_conn = FirebaseService(database_url=f'{os.getenv("FIREBASE_URL")}', credential_path=f'{os.getenv("FIREBASE_ACCESS_JSON_PATH")}')
