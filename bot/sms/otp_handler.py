@@ -18,21 +18,21 @@ from services.smspool_objects import sms_pool
 from database.methods import firebase_conn
 from bot.start.handler import menu
 
+otp_service_price = 1
+otp_not_listed_price = 1.5
 
 
-cancel_button = [
+otp_cancel_button = [
     [InlineKeyboardButton("Cancel", callback_data='cancel_action')]
 ]
 
-ASK_SERVICE_NAME, CONFIRMATION, ORDER_PHONE_NUMBER_OTP, RESEND_OTP = range(4)
-
-# async def one_time_message_callback(update: Update, context: ContextTypes) -> None:
-#     # Logic for one-time message
-#     query = update.callback_query
-#     await query.answer()  # This is necessary to acknowledge the callback
-#     await query.edit_message_text("One-time message functionality coming soon.")
+otp_service_not_found = [
+    [InlineKeyboardButton("Service is not in a list", callback_data='yes_confirmation_otp')],
+    [InlineKeyboardButton("Cancel", callback_data='cancel_action')],
+]
 
 
+ASK_SERVICE_NAME, CONFIRMATION, ORDER_PHONE_NUMBER_OTP, NOT_LISTED_CONFIRMATION, RESEND_OTP = range(5)
     
     
 async def ask_for_service_name(update: Update, context: ContextTypes) -> int:
@@ -41,12 +41,14 @@ async def ask_for_service_name(update: Update, context: ContextTypes) -> int:
     
     query = update.callback_query
     await query.answer()
-    await query.edit_message_text(
-        "Please enter service name (Gmail) or 0 if can't find the service:",
-        reply_markup=InlineKeyboardMarkup(cancel_button)
+    
+    
+    ask_servie_messge = await query.edit_message_text(
+        "Please enter service name (Gmail)",
+        reply_markup=InlineKeyboardMarkup(otp_cancel_button)
     )
     
-    
+    context.user_data['ask_service_name_message_id'] = ask_servie_messge.message_id
     
     return CONFIRMATION
 
@@ -55,10 +57,26 @@ async def otp_confirmation(update: Update, context: ContextTypes) -> int:
     ### check if service name is valid
     ### check price of service
     
-    service_name_input = update.message.text
+    service_name_input = update.message.text.lower()
     
+    all_services = sms_pool.get_service_list()
+    print(all_services)
+    
+    
+    context.user_data['service_name'] = None
+    #get service ID if service name is in the list
+    for service in all_services:
+        if service_name_input in service['name'].lower():
+            context.user_data['service_id'] = service['ID']
+            context.user_data['service_name'] = service['name']
+            context.user_data['service_otp_price'] = 1
+            break
+
+
+
+            
     ##get price of service and if available
-    response = sms_pool.get_service_price('US', service_name_input)
+    response = sms_pool.get_service_price('US', context.user_data['service_name'])
     
     ##get price from response 
     ##{'price': '0.26', 'high_price': '0.75', 'pool': 1, 'success_rate': '100.00'}
@@ -68,24 +86,27 @@ async def otp_confirmation(update: Update, context: ContextTypes) -> int:
     if response['price'] is None:
 
         await update.message.reply_text(
-            f"Service {service_name_input} is not available. Please try again.",
-            reply_markup=InlineKeyboardMarkup(cancel_button)
+            f"Service {service_name_input} was not found. If the service is not on a list - please choose 'Service is not on a list'.",
+            reply_markup=InlineKeyboardMarkup(otp_service_not_found)
         )
-        return CONFIRMATION
+        
+        context.user_data['service_name'] = "Not Listed"
+        context.user_data['service_otp_price'] = 1.5
+        
+        return ORDER_PHONE_NUMBER_OTP
     
     # Delete the message containing the service name input
     await update.message.delete()
     
-    context.user_data['service_name'] = service_name_input
-    service_otp_price = response['price']
-    context.user_data['service_otp_price'] = service_otp_price
+    #Delete the message asking for service name
+    await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=context.user_data['ask_service_name_message_id'])
     
     ##ask for confirmation
-    keyboard = [[InlineKeyboardButton("Yes", callback_data='yes_confirmation_otp'), InlineKeyboardButton("No", callback_data='no_confirmation_otp')]]
+    keyboard = [[InlineKeyboardButton(f"Yes - {otp_service_price}$", callback_data='yes_confirmation_otp'), InlineKeyboardButton("No", callback_data='no_confirmation_otp')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.message.reply_text(
-        f"The service {context.user_data['service_name']} costs {service_otp_price}. Do you want to proceed?",
+    context.user_data['ask_confirmation_message_id'] =  await update.message.reply_text(
+        f"The service {context.user_data['service_name']}. Do you want to proceed?",
         reply_markup=reply_markup
     )
     
@@ -97,26 +118,21 @@ async def otp_confirmation(update: Update, context: ContextTypes) -> int:
 async def not_enough_balance(update: Update, context: ContextTypes) -> int:
     print('not enough balance')
     
+    await update.callback_query.answer()
+    
+    #delete current message
+    await update.callback_query.message.delete()
+    
     keyboard = [
         [InlineKeyboardButton("Deposit", callback_data="Deposit")]
     ]
     reply_keyboard = InlineKeyboardMarkup(keyboard)
 
-    # Respond to the callback query if it exists
-    if update.callback_query:
-        await update.callback_query.answer()
-        await update.callback_query.message.reply_text(
+
+    await update.callback_query.message.reply_text(
             "You don't have enough balance to rent this number.",
             reply_markup=reply_keyboard
         )
-    # Otherwise, respond to a regular message
-    elif update.message:
-        await update.message.reply_text(
-            "You don't have enough balance to rent this number.",
-            reply_markup=reply_keyboard
-        )
-    else:
-        print("Update does not contain a message or callback query.")
 
     return ConversationHandler.END
     
@@ -127,9 +143,8 @@ async def order_phone_number_otp(update: Update, context: ContextTypes) -> int:
     
     ###check if enough balance
     if firebase_conn.check_if_enough_balance(update.effective_user.id, context.user_data['service_otp_price']) is False:
-        await not_enough_balance(update, context)
-        return ConversationHandler.END
-
+        return await not_enough_balance(update, context)
+    
     ###order phone number
     response = sms_pool.order_sms('US', context.user_data['service_name'], 0, 1, 0)
 
@@ -142,10 +157,11 @@ async def order_phone_number_otp(update: Update, context: ContextTypes) -> int:
     ###if not - ask for service name again
     else:
         await query.message.edit_text("There was an error processing your order.")
-        return ConversationHandler.END
+        return await cancel(update, context)
 
     
-    expires_in = response.get('expires_in', 0)
+    # expires_in = response.get('expires_in', 0)
+    expires_in = 30
     start_time = asyncio.get_event_loop().time()  # Get the current loop time
 
     # Function to update the message
@@ -156,42 +172,52 @@ async def order_phone_number_otp(update: Update, context: ContextTypes) -> int:
         await query.message.edit_text(
             f"Your phone number is {response['number']}.\n"
             f"Please use this number to receive your OTP for {response['service']}.\n"
-            f"This number will expire in {int(remaining_time)} seconds."
+            f"This number will expire in {int(remaining_time)} seconds.",
+            reply_markup=InlineKeyboardMarkup(otp_cancel_button)
         )
         return remaining_time
 
     await update_message()
 
-    while True:
-        print('while')
-        await asyncio.sleep(5)
-        
-        remaining_time = await update_message()
-        if remaining_time <= 15:
-            await query.message.edit_text("The OTP has expired.")
+    async def accept_message() -> int:
+        while True:
+            print('while')
+            await asyncio.sleep(5)
             
-            return ConversationHandler.END
-
-        check_response = sms_pool.check_sms(context.user_data['order_id'])
-        print(check_response)
-        if check_response['status'] == 3:
-            
-            ###update balance
-            if firebase_conn.decrease_balance(update.effective_user.id, 1) is False:
-                await query.message.edit_text("There was an error processing your order.")
-            
-            keyboard = [
-                [InlineKeyboardButton("Use number again?", callback_data='resend_otp')],
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
+            remaining_time = await update_message()
+            print(remaining_time)
+            if remaining_time <= 15:
+                await query.message.edit_text(
+                    "The phone number has expired.",
+                    reply_markup=InlineKeyboardMarkup(otp_cancel_button)
+                    )
+                break
                 
-            ###update message
-            await query.message.edit_text(
-                f"Your OTP is {check_response['full_sms']}.",
-                reply_markup=reply_markup
-                )
+
+            check_response = sms_pool.check_sms(context.user_data['order_id'])
+            print(check_response)
+            if check_response['status'] == 3:
+                
+                ###update balance
+                if firebase_conn.decrease_balance(update.effective_user.id, 1) is False:
+                    await query.message.edit_text("There was an error processing your order.")
+                
+                keyboard = [
+                    [InlineKeyboardButton("Use number again? 1$", callback_data='resend_otp')],
+                    [InlineKeyboardButton("Back to menu", callback_data='menu')]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                    
+                ###update message
+                await query.message.edit_text(
+                    f"Your OTP is {check_response['full_sms']}.",
+                    reply_markup=reply_markup
+                    )                
+                return RESEND_OTP
             
-            return RESEND_OTP
+    result =  asyncio.create_task(accept_message())
+    
+    # return RESEND_OTP
 
 async def resend_otp(update: Update, context: ContextTypes) -> int:
     query = update.callback_query
@@ -204,11 +230,9 @@ async def resend_otp(update: Update, context: ContextTypes) -> int:
     
     ###resend sms
     response = sms_pool.resend(context.user_data['order_id'])
+    print(response)
     if response['success'] == 1:
-        ###tell user that number has beed requested again
-        await query.message.reply_text(
-            f"{+context.user_data['number']} was activated again.")
-
+    
             
         expires_in = 500
         start_time = asyncio.get_event_loop().time()  # Get the current loop time
@@ -219,23 +243,24 @@ async def resend_otp(update: Update, context: ContextTypes) -> int:
             elapsed_time = current_time - start_time
             remaining_time = max(expires_in - elapsed_time, 0)
             await query.message.edit_text(
+                f"Phone number Reactivated!\n"
                 f"Phone number is {context.user_data['number']}.\n"
-                f"Please use this number to receive your OTP for {response['service']}.\n"
+                f"Please use this number to receive your OTP for {context.user_data['service_name']}.\n"
                 f"This number will expire in {int(remaining_time)} seconds."
             )
             return remaining_time
 
         await update_message()
 
+    async def chreck_for_resend_message():
         while True:
             print('while')
             await asyncio.sleep(5)
             
             remaining_time = await update_message()
             if remaining_time <= 15:
-                await query.message.edit_text("The OTP number has expired.")
-                
-                return ConversationHandler.END
+                await query.message.edit_text("The phone number has expired.")
+                return await cancel(update, context)
 
             check_response = sms_pool.check_sms(context.user_data['order_id'])
             print(check_response)
@@ -243,32 +268,38 @@ async def resend_otp(update: Update, context: ContextTypes) -> int:
                 
                 ###update balance
                 firebase_conn.decrease_balance(update.effective_user.id, 1)
-                    
+                
                 ###update message
                 await query.message.edit_text(
                     f"Your OTP is {check_response['full_sms']}.",
                     )
                 
-                return ConversationHandler.END
+                print('end - 1')
+                
+                return await cancel(update, context)
+                
+                
+    
+    return await asyncio.create_task(chreck_for_resend_message())
         
-        
-    else:
-        await query.message.reply_text(
-            f"Requesting +{context.user_data['number']} again failed.")
-
-    return ConversationHandler.END
     
     
 async def cancel(update: Update, context: ContextTypes) -> int:
     """End the conversation."""
     print('cancel')
     
-    query = update.callback_query
-    await query.answer()
-    
-    await query.message.edit_text(
-        "Canceled"
-    )
+    if update.callback_query is not None:
+        print('callback')
+        await update.callback_query.answer()
+        
+        await update.callback_query.message.edit_text(
+            "Back to menu"
+        )
+    else:
+        print('message')
+        await update.message.edit_text(
+            "Back to menu"
+        )
 
     await menu(update, context)
     
@@ -278,11 +309,10 @@ async def cancel(update: Update, context: ContextTypes) -> int:
     
 otp_conv = ConversationHandler(
     entry_points=[CallbackQueryHandler(ask_for_service_name, pattern='^one_time_message$')],
-    conversation_timeout=30,  # Timeout after 5 minutes of inactivity
     states={
         CONFIRMATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, otp_confirmation)],
         ORDER_PHONE_NUMBER_OTP: [CallbackQueryHandler(order_phone_number_otp, pattern='^yes_confirmation_otp$')],
-        RESEND_OTP: [CallbackQueryHandler(resend_otp, pattern='^resend_otp$')]
+        RESEND_OTP: [CallbackQueryHandler(resend_otp, pattern='^resend_otp$')],
     },
     fallbacks=[
         CallbackQueryHandler(cancel, pattern='^cancel_action$'),

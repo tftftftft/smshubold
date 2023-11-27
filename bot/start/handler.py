@@ -41,12 +41,14 @@ async def menu(update: Update, context: ContextTypes) -> None:
     await query.answer()
     
     ###delete previous message
-    await query.message.delete()
+    # await query.message.delete()
     
     await query.message.reply_text(
         "Choose an option from below.",
-        reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True),
+        reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True, is_persistent=True),
     )
+    
+
 
 ###menu without deleting previous message
 async def light_menu(update: Update, context: ContextTypes) -> None:

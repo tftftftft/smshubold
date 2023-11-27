@@ -63,6 +63,8 @@ rental_any_service_order_confirmation_buttons = [
 # ]
 
 async def receive_sms(update: Update, context: ContextTypes) -> None:
+    # delete previous message (user's choice)
+    await update.message.delete()    
     # Logic for receiving SMS
     keyboard = [
         [InlineKeyboardButton("One-time message", callback_data='one_time_message')],
@@ -187,18 +189,7 @@ async def order_final(update: Update, context: ContextTypes) -> int:
             
             return ConversationHandler.END
             
-            # ###wait for sms
-            # rental_code = order_response['rental_code']
 
-            # while True:
-            #     print('while')
-            #     await asyncio.sleep(5)
-
-            #     check_response = sms_pool.retrive_rental_messages(rental_code)
-            #     print(check_response)
-            #     # {'success': 1, 'messages': {'0': {'ID': 4, 'sender': '32665', 'message': '44587 ds din bekrdgtelsekod freo Facebook', 'timestamp': '2023-11-26 04:48:41'}, '1': {'ID': 3, 'sender': '32665', 'message': '75691 adalah kode konfirmasi Facebook Anda', 'timestamp': '2023-11-26 04:48:35'}, '2': {'ID': 2, 'sender': '32665', 'message': '44587 ds din bekrdgtelsekod freo Facebook', 'timestamp': '2023-11-26 04:48:33'}}, 'source': 11}
-            #     if check_response['messages'] is not None:
-                    
                 
                 
         else:
@@ -218,6 +209,13 @@ async def ask_for_service(update: Update, context: ContextTypes) -> int:
     print('ask_for_service')
     query = update.callback_query
     await query.answer()
+    
+    #NULL Data
+    context.user_data['service_id'] = None
+    context.user_data['service_name_rental'] = None
+    
+    
+    
     await query.edit_message_text(
         f"Please enter the service name you want to rent the number for.",
         reply_markup=InlineKeyboardMarkup(cancel_button)
@@ -238,7 +236,7 @@ async def validate_service(update: Update, context: ContextTypes) -> int:
     
     #get service ID if service name is in the list
     for service in all_services:
-        if service['name'].lower() == service_name_input:
+        if service_name_input in service['name'].lower():
             context.user_data['service_id'] = service['ID']
             context.user_data['service_name_rental'] = service['name']
             break
@@ -300,12 +298,12 @@ async def cancel(update: Update, context: ContextTypes) -> int:
     query = update.callback_query
     await query.answer()
         
+    
+    await query.message.delete()
+
     await query.message.reply_text(
         "Canceled",
     )
-    
-    # await query.message.delete()
-
     await menu(update, context)
     
     return ConversationHandler.END
@@ -313,10 +311,10 @@ async def cancel(update: Update, context: ContextTypes) -> int:
 
     
 rental_conv = ConversationHandler(
-    entry_points=[CallbackQueryHandler(rental_faq, pattern='^rent_number$')],
+    entry_points=[CallbackQueryHandler(ask_for_number_type, pattern='^rent_number$')],
     # conversation_timeout=30,  # Timeout after 5 minutes of inactivity
     states={
-        ASK_FOR_NUMBER_TYPE: [CallbackQueryHandler(ask_for_number_type, pattern='^continue_rental_1$')],
+        # ASK_FOR_NUMBER_TYPE: [CallbackQueryHandler(ask_for_number_type, pattern='^continue_rental_1$')],
         PROCESS_NUMBER_TYPE_CHOICE: [CallbackQueryHandler(process_number_type_choice)],
         ASK_FOR_SERVICE: [CallbackQueryHandler(ask_for_service, pattern='^specific_service_rental$')],
         VALIDATE_SERVICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, validate_service)],
@@ -366,6 +364,8 @@ async def my_rented_numbers_callback(update: Update, context: ContextTypes) -> N
         button_text = f"+{details['number']} - {details['service_name'] if details['service_name'] else 'Any service'}"
         callback_data = f"rented_number_{key}"  # Use the unique key as callback data
         keyboard.append([InlineKeyboardButton(button_text, callback_data=callback_data)])
+    #add cancel button
+    keyboard.append([InlineKeyboardButton("Back to Menu", callback_data='menu')])
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 

@@ -8,6 +8,9 @@ from telegram.ext import (
 from bot.start.handler import menu
 
 async def technical_support(update: Update, context: ContextTypes) -> None:
+    # delete user's choice messaege
+    await update.message.delete()
+    
     # Path to your local image file
     image_path = './test_photo.png'
 

@@ -27,6 +27,9 @@ cancel_button = [
 ]
 
 async def my_profile(update: Update, context: ContextTypes) -> None:
+    # delete user's choice messae
+    await update.message.delete()    
+
     # Fetch the user ID
     user_id = update.effective_user.id
 
