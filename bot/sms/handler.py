@@ -205,10 +205,13 @@ async def ask_for_service(update: Update, context: ContextTypes) -> int:
     
     
     
-    await query.edit_message_text(
+    ask_servie_message = await query.edit_message_text(
         "Enter the name of the service for which you want to rent a number:",
         reply_markup=InlineKeyboardMarkup(cancel_button)
     )
+    
+    context.user_data['rental_ask_service_name_message_id'] = ask_servie_message.message_id
+    
     
     return VALIDATE_SERVICE
 
@@ -219,8 +222,14 @@ async def validate_service(update: Update, context: ContextTypes) -> int:
     service_name_input = update.message.text.lower()
     print(service_name_input)
     
-    ##get service id
+    #delete user input message
+    await update.message.delete()
     
+    if context.user_data.get('rental_ask_service_name_message_id') is not None:
+        #delete previous message (ask for service)
+        await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=context.user_data['rental_ask_service_name_message_id'])
+    
+    ##get service id
     all_services = sms_pool.get_service_list()
     
     #get service ID if service name is in the list
@@ -354,7 +363,8 @@ async def my_rented_numbers_callback(update: Update, context: ContextTypes) -> N
         callback_data = f"rented_number_{key}"  # Use the unique key as callback data
         keyboard.append([InlineKeyboardButton(button_text, callback_data=callback_data)])
     #add cancel button
-    keyboard.append([InlineKeyboardButton("Back to Menu", callback_data='menu')])
+    keyboard.append(
+        [InlineKeyboardButton("Back to Menu", callback_data='menu')])
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -384,6 +394,7 @@ async def rented_number_callback(update: Update, context: ContextTypes) -> None:
     
     keyboard = [
         [InlineKeyboardButton("Messages", callback_data=f'rental_messages_history_{key}')],
+        [InlineKeyboardButton("Check status", callback_data=f'rented_number_{key}')],
         [InlineKeyboardButton("Back to Menu", callback_data='menu')]
     ]
 
@@ -403,16 +414,10 @@ async def rented_number_callback(update: Update, context: ContextTypes) -> None:
     )
 
     await update_message(status)
+
+
     
-    async def check_status_periodically():
-        while True:
-            print('check_status_periodically')
-            await asyncio.sleep(10)  # Wait for 3 minutes (180 seconds) between checks
-            if sms_pool.retrive_rental_status(key)['status']['available'] == 1:
-                await update_message(True)
-                break
-                
-    asyncio.create_task(check_status_periodically())
+
             
 
     
@@ -424,23 +429,60 @@ async def rental_history(update: Update, context: ContextTypes) -> None:
     # Extract the key from the callback data
     key = query.data.split('_')[-1]
     
+    back_to_menu_button = [InlineKeyboardButton("Back to Menu", callback_data='menu')]
+    
     response = sms_pool.retrive_rental_messages(key)
     print(response)
     
-    if response['messages'] is None:
-        await query.message.reply_text(f"No messages found.")
-        await menu(update, context)
-        return
-    
-    # Construct the message with all the messages
-    message = ""
-    for key, details in response['messages'].items():
-        message += f"From: {details['sender']}\n"
-        message += f"Message: {details['message']}\n"
-        message += f"Time: {details['timestamp']}\n\n"
+    #if messages are not empty:
+    if 'messages' in response and response['messages']:
+        # Construct the message with all the messages
+        message = ""
+        for _, details in response['messages'].items():
+            message += f"From: {details['sender']}\n"
+            message += f"Message: {details['message']}\n"
+            message += f"Time: {details['timestamp']}\n\n"
+            
+        rental_messages_history=  await query.message.edit_text(
+            message,
+            reply_markup = InlineKeyboardMarkup([
+                [InlineKeyboardButton("Update message list", callback_data=f"rental_messages_history_{key}")],
+                back_to_menu_button
+            ])
+        ) 
+        context.user_data['rental_messages_history_message_id'] = rental_messages_history.message_id  
+    else:
+        rental_messages_history= await query.message.edit_text(
+            f"No messages found.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Back to Menu", callback_data='menu')]])
+            )
+        context.user_data['rental_messages_history_message_id'] = rental_messages_history.message_id
         
-    await query.message.reply_text(
-        message,
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Back to Menu", callback_data='menu')]])
-    ) 
-    
+    #spawn task to check for new messages
+    # asyncio.create_task(check_for_new_rental_messages(key, update, context))
+
+
+###for future
+# async def check_for_new_rental_messages(order_id: str, update: Update, context: ContextTypes) -> None:
+#     """Check for new messages every 3 minutes."""
+#     while True:
+#         print('check_for_new_rental_messages')
+#         await asyncio.sleep(10)  # Wait for 3 minutes (180 seconds) between checks
+#         response = sms_pool.retrive_rental_messages(order_id)
+#         print(response)
+#         if response['messages'] is not None:
+#             # Construct the message with all the messages
+#             message = ""
+#             for key, details in response['messages'].items():
+#                 message += f"From: {details['sender']}\n"
+#                 message += f"Message: {details['message']}\n"
+#                 message += f"Time: {details['timestamp']}\n\n"
+#             #fully modify the rental_messages_history message to "Retriving new messages..., remove back to menu button"
+
+            
+            
+#             #fully modify same message with new messages, return back to menu button
+            
+
+            
+

@@ -58,12 +58,12 @@ async def ask_for_service_name(update: Update, context: ContextTypes) -> int:
     await query.answer()
     
     
-    ask_servie_messge = await query.edit_message_text(
+    ask_servie_message = await query.edit_message_text(
         "✍️ Please enter the service name",
         reply_markup=InlineKeyboardMarkup(otp_cancel_button)
     )
     
-    context.user_data['ask_service_name_message_id'] = ask_servie_messge.message_id
+    context.user_data['otp_ask_service_name_message_id'] = ask_servie_message.message_id
     
     return CONFIRMATION
 
@@ -113,8 +113,9 @@ async def otp_confirmation(update: Update, context: ContextTypes) -> int:
     # Delete the message containing the service name input
     await update.message.delete()
     
-    #Delete the message asking for service name
-    await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=context.user_data['ask_service_name_message_id'])
+    if context.user_data.get('otp_ask_service_name_message_id') is not None:
+        #Delete the message asking for service name
+        await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=context.user_data['otp_ask_service_name_message_id'])
     
     ##ask for confirmation
     keyboard = [
@@ -297,8 +298,6 @@ async def cancel(update: Update, context: ContextTypes) -> int:
     """End the conversation."""
     print('cancel')
             
-    context.user_data['conversation_ended'] = True
-        
     if update.callback_query is not None:
         print('callback')
         await update.callback_query.answer()

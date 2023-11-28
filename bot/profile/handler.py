@@ -14,7 +14,7 @@ from models.models import User
 
 from  database.methods import firebase_conn
 
-from bot.start.handler import menu, light_menu
+from bot.start.handler import menu
 
 import asyncio
 
@@ -146,10 +146,7 @@ async def process_crypto(update: Update, context: ContextTypes) -> int:
             "Please try again later or contact our support team for assistance."
         )
     
-    await light_menu(update, context)
-    
-    
-    return ConversationHandler.END
+    return await cancel(update, context)
 
 
 async def cancel(update: Update, context: ContextTypes) -> int:
@@ -158,10 +155,7 @@ async def cancel(update: Update, context: ContextTypes) -> int:
     
     query = update.callback_query
     await query.answer()
-    
-    await query.message.edit_text(
-        "Canceled"
-    )
+
     
     await menu(update, context)
     

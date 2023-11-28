@@ -75,7 +75,9 @@ async def light_menu(update: Update, context: ContextTypes) -> None:
     query = update.callback_query
     await query.answer()
      
-    await query.message.reply_text(
+    menu_message = await query.message.reply_text(
         "Choose an option from below.",
-        reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True),
+        reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True, is_persistent=True),
     )
+    
+    context.user_data['menu_message_id'] = menu_message.message_id
