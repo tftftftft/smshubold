@@ -40,12 +40,26 @@ class FirebaseService:
 
     def get(self, ref: str, key: str) -> Optional[T]:
         """ Retrieve data from the specified reference and key. """
-        data = db.reference(f'{ref}/{key}').get()
-        return data
-    
+        try:
+            data = db.reference(f'{ref}/{key}').get()
+            return data
+        except Exception as e:
+            logger.error(f'Error retrieving data from Firebase: {e}')
+            return None
+        
     def delete(self, ref: str, key: str) -> None:
         """ Delete data from the specified reference and key. """
         db.reference(f'{ref}/{key}').delete()
+        
+    def get_user_balance(self, user_id: str) -> float:
+        """Retrieve the user's balance."""
+        
+        # Define the reference and key for the user's balance
+        ref = 'users'
+        key = f'{user_id}/balance'
+        
+        # Retrieve the balance
+        return self.get(ref, key)
         
     def add_balance(self, user_id: str, amount: float) -> bool:
         """Add the specified amount to the user's balance."""

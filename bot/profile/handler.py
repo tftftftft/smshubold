@@ -23,27 +23,34 @@ import asyncio
 ASK_CRYPTO, PROCESSING_CRYPTO = range(2)
 
 cancel_button = [
-    [InlineKeyboardButton("Cancel", callback_data='Cancel')]
+    [InlineKeyboardButton("❌ Cancel", callback_data='Cancel')]
 ]
 
 async def my_profile(update: Update, context: ContextTypes) -> None:
     # delete user's choice messae
-    await update.message.delete()    
+    await update.message.delete()
+    
+    #delete menu message
+    if context.user_data.get('menu_message_id') is not None:
+        print(context.user_data['menu_message_id'])
+        await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=context.user_data['menu_message_id'])
 
     # Fetch the user ID
     user_id = update.effective_user.id
 
     # Create an inline keyboard with one button for adding balance
     keyboard = [
-        [InlineKeyboardButton("Add Balance", callback_data='Deposit')],
-        [InlineKeyboardButton("Back to Menu", callback_data='menu')]
+        [InlineKeyboardButton("💰 Add Balance", callback_data='Deposit')],
+        [InlineKeyboardButton("🔙 Back to Menu", callback_data='menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     # Send a message with the user's ID and the inline keyboard
     await update.message.reply_text(
-        f"Your ID is: {user_id}\n\nClick below to add balance:",
-        reply_markup=reply_markup
+        f"🆔 *Your ID:* `{user_id}`\n"
+        f"💰Your balance: {firebase_conn.get_user_balance(user_id)}$\n",
+        reply_markup=reply_markup,
+        parse_mode=ParseMode.MARKDOWN
     )
     
 
@@ -55,9 +62,9 @@ async def ask_amount(update: Update, context: ContextTypes) -> int:
     
     ###keyboard for deposit
     keyboard = [
-        [InlineKeyboardButton("10$", callback_data='10'), InlineKeyboardButton("20$", callback_data='20'), InlineKeyboardButton("50$", callback_data='50')],
-        [InlineKeyboardButton("100$", callback_data='100'), InlineKeyboardButton("200$", callback_data='200'), InlineKeyboardButton("500$", callback_data='500')],
-        [InlineKeyboardButton("Cancel", callback_data='Cancel')]
+        [InlineKeyboardButton("💵 10$", callback_data='10'), InlineKeyboardButton("💵 20$", callback_data='20'), InlineKeyboardButton("💵 50$", callback_data='50')],
+        [InlineKeyboardButton("💵 100$", callback_data='100'), InlineKeyboardButton("💵 200$", callback_data='200'), InlineKeyboardButton("💵 500$", callback_data='500')],
+        [InlineKeyboardButton("❌ Cancel", callback_data='Cancel')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -85,8 +92,8 @@ async def ask_crypto(update: Update, context: ContextTypes) -> int:
     
     # Directly ask for cryptocurrency
     keyboard = [
-        [InlineKeyboardButton("BTC", callback_data='BTC'), InlineKeyboardButton("USDT TRC20", callback_data='USDT_TRC20'), InlineKeyboardButton("LTC", callback_data='LTC')],
-        [InlineKeyboardButton("Cancel", callback_data='Cancel')]
+        [InlineKeyboardButton("💠 BTC", callback_data='BTC'), InlineKeyboardButton("💠 USDT TRC20", callback_data='USDT_TRC20'), InlineKeyboardButton("💠 LTC", callback_data='LTC')],
+        [InlineKeyboardButton("❌ Cancel", callback_data='Cancel')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
         
@@ -129,11 +136,14 @@ async def process_crypto(update: Update, context: ContextTypes) -> int:
 
     if result:
         await query.message.edit_text(
-            "Your deposit has been confirmed."        
+            "✅ Deposit Confirmed!\n"
+            "Your deposit has been successfully processed. 💰"
         )
     else:
         await query.message.edit_text(
-            "There was an error processing your deposit. Please try again later or contact support."        
+            "❌ Deposit Error!\n"
+            "There was an issue processing your deposit. 🚫\n"
+            "Please try again later or contact our support team for assistance."
         )
     
     await light_menu(update, context)

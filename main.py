@@ -57,10 +57,10 @@ def main() -> None:
     application.add_handler(CommandHandler("start", start))
     
     application.add_handler(CallbackQueryHandler(menu, pattern='^menu$'))
-    
-    application.add_handler(MessageHandler(filters.Regex("^Receive SMS$"), receive_sms))
-    application.add_handler(MessageHandler(filters.Regex("^My Profile$"), my_profile))
-    application.add_handler(MessageHandler(filters.Regex("^Technical Support$"), technical_support))
+        
+    application.add_handler(MessageHandler(filters.Regex("^📩 Receive SMS$"), receive_sms))
+    application.add_handler(MessageHandler(filters.Regex("^👤 My Profile$"), my_profile))
+    application.add_handler(MessageHandler(filters.Regex("^🔧 Technical Support$"), technical_support))
 
     
     #profile callback

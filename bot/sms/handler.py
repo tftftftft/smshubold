@@ -28,33 +28,32 @@ all_services_price = 30
 ##817 service id for not listed
 
 cancel_button = [
-    [InlineKeyboardButton("Cancel", callback_data='cancel_action')]
+    [InlineKeyboardButton("❌ Cancel", callback_data='cancel_action')]
 ]
 
 rental_faq_buttons = [
-    [InlineKeyboardButton("Continue", callback_data='continue_rental_1')],
-    [InlineKeyboardButton("Cancel", callback_data='cancel_action')]
+    [InlineKeyboardButton("✅ Continue", callback_data='continue_rental_1')],
+    [InlineKeyboardButton("❌ Cancel", callback_data='cancel_action')]
 ]
 
 rental_choose_service_buttons = [
-    [InlineKeyboardButton("Any service - 30$", callback_data='any_service_rental')],
-    [InlineKeyboardButton("Specific service - 10$", callback_data='specific_service_rental')]
+    [InlineKeyboardButton("🌐 Any service - 30$", callback_data='any_service_rental')],
+    [InlineKeyboardButton("🔍 Specific service - 10$", callback_data='specific_service_rental')],
 ]
 
 rental_service_not_found_buttons = [
-    # [InlineKeyboardButton("Service not listed - 15$", callback_data='service_not_listed')],
-    [InlineKeyboardButton("Try again", callback_data='specific_service_rental')],
-    [InlineKeyboardButton("Cancel", callback_data='cancel_action')] 
+    [InlineKeyboardButton("🔄 Try again", callback_data='specific_service_rental')],
+    [InlineKeyboardButton("❌ Cancel", callback_data='cancel_action')] 
 ]
 
 rental_confirm_order_buttons = [
-    [InlineKeyboardButton("Confirm", callback_data='confirm_order')],
-    [InlineKeyboardButton("Cancel", callback_data='cancel_action')]
+    [InlineKeyboardButton("✔️ Confirm", callback_data='confirm_order')],
+    [InlineKeyboardButton("❌ Cancel", callback_data='cancel_action')]
 ]
 
 rental_any_service_order_confirmation_buttons = [
-    [InlineKeyboardButton("Confirm", callback_data='confirm_order_any_service')],
-    [InlineKeyboardButton("Cancel", callback_data='cancel_action')]
+    [InlineKeyboardButton("✔️ Confirm", callback_data='confirm_order_any_service')],
+    [InlineKeyboardButton("❌ Cancel", callback_data='cancel_action')]
 ]
 
 # rental_final_buttons = [
@@ -64,17 +63,23 @@ rental_any_service_order_confirmation_buttons = [
 
 async def receive_sms(update: Update, context: ContextTypes) -> None:
     # delete previous message (user's choice)
-    await update.message.delete()    
+    await update.message.delete()
+    
+    #delete menu message
+    if context.user_data.get('menu_message_id') is not None:
+        print(context.user_data['menu_message_id'])
+        await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=context.user_data['menu_message_id'])
+    
     # Logic for receiving SMS
     keyboard = [
-        [InlineKeyboardButton("One-time message", callback_data='one_time_message')],
-        [InlineKeyboardButton("Rent Phone Number", callback_data='rent_number')],
-        [InlineKeyboardButton("My Rented Numbers", callback_data='my_rented_numbers')],
-        [InlineKeyboardButton("Back to Menu", callback_data='menu')]
-    ]
+        [InlineKeyboardButton("📩 One-time message", callback_data='one_time_message')],
+        [InlineKeyboardButton("📲 Rent Phone Number", callback_data='rent_number')],
+        [InlineKeyboardButton("🔢 My Rented Numbers", callback_data='my_rented_numbers')],
+        [InlineKeyboardButton("🔙 Back to Menu", callback_data='menu')]
+    ]   
     
     await update.message.reply_text(
-        "Choose an option from below.",
+        "🇺🇸 Access Real USA Phone Numbers.",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
     
@@ -89,18 +94,6 @@ async def receive_sms(update: Update, context: ContextTypes) -> None:
 
 
 RENTAL_FAQ, ASK_FOR_NUMBER_TYPE, PROCESS_NUMBER_TYPE_CHOICE, VALIDATE_SERVICE, ASK_FOR_SERVICE, RENTAL_ORDER_SPECIFIC_CONFIRMATION, RENTAL_ORDER_FINAL, RENTAL_ORDER_NOT_LISTED_CONFIRMATION = range(8)
-
-async def rental_faq(update: Update, context: ContextTypes) -> int:
-    
-    query = update.callback_query
-    await query.answer()
-    await query.edit_message_text(
-        f"Only 30 days rental is available for any service.",
-        reply_markup=InlineKeyboardMarkup(rental_faq_buttons)
-    )
-    
-    return ASK_FOR_NUMBER_TYPE
-
 
 async def ask_for_number_type(update: Update, context: ContextTypes) -> int:
     
@@ -124,6 +117,7 @@ async def process_number_type_choice(update: Update, context: ContextTypes) -> i
         #set current rental type to any service by id: None - any service, 817 - not listed, X - specific service
         context.user_data['service_id'] = None
         context.user_data['id'] = 6
+        context.user_data['service_name_rental'] = 'Any service'
         # If user chooses "Any service", go to rental_order_confirmation
         return await order_final(update, context)
 
@@ -157,7 +151,7 @@ async def order_final(update: Update, context: ContextTypes) -> int:
             firebase_conn.decrease_balance(query.from_user.id, all_services_price)
             
             # Add rental number to database
-            #prepare dict
+                #prepare dict
             rental_data = {
                 'number': order_response['phonenumber'],
                 'expiry': datetime.utcfromtimestamp(order_response['expiry']).isoformat() + 'Z',
@@ -166,44 +160,39 @@ async def order_final(update: Update, context: ContextTypes) -> int:
             }
             firebase_conn.add_rental(query.from_user.id, order_response['rental_code'], rental_data)
             
-            # Show message with number and expiration date, activate phone number
-            message = f"Please wait for 3 minutes for the number to be activated.\n"
-            message = f"Your rental number is {order_response['phonenumber']}.\n"
-            if context.user_data['service_name_rental']:
-                message += f"For service: {context.user_data['service_name_rental']}.\n"
-            else:
-                message += f"For any service.\n"
-            message += f"It will expire on {datetime.fromtimestamp(order_response['expiry'])}.\n"
+            # # Show message with number and expiration date, activate phone number
+            # message = f"Please wait for 3 minutes for the number to be activated.\n"
+            # message = f"Your rental number is {order_response['phonenumber']}.\n"
+            # if context.user_data['service_name_rental']:
+            #     message += f"For service: {context.user_data['service_name_rental']}.\n"
+            # else:
+            #     message += f"For any service.\n"
+            # message += f"It will expire on {datetime.fromtimestamp(order_response['expiry'])}.\n"
             
             
-            await query.edit_message_text(
-                message,                    
-            )
-            
-            #redirect to my rented numbers
-            # await query.message.reply_text(
-            #     f"You are being redirected to My Rented Numbers.",
+            # await query.edit_message_text(
+            #     message,                    
             # )
+            
             
             await my_rented_numbers_callback(update, context)
             
             return ConversationHandler.END
             
-
-                
-                
         else:
             #if not, send error message
             await query.edit_message_text(
                 f"Error: Try again later.",
             )
+            return await cancel(update, context)
     else:
         #if not, send error message
         await query.edit_message_text(
             f"Error: Not enough balance.",
         )
+        return await cancel(update, context)
         
-    return ConversationHandler.END
+
     
 async def ask_for_service(update: Update, context: ContextTypes) -> int:
     print('ask_for_service')
@@ -217,7 +206,7 @@ async def ask_for_service(update: Update, context: ContextTypes) -> int:
     
     
     await query.edit_message_text(
-        f"Please enter the service name you want to rent the number for.",
+        "Enter the name of the service for which you want to rent a number:",
         reply_markup=InlineKeyboardMarkup(cancel_button)
     )
     
@@ -299,11 +288,11 @@ async def cancel(update: Update, context: ContextTypes) -> int:
     await query.answer()
         
     
-    await query.message.delete()
+    # await query.message.delete()
 
-    await query.message.reply_text(
-        "Canceled",
-    )
+    # await query.message.reply_text(
+    #     "Canceled",
+    # )
     await menu(update, context)
     
     return ConversationHandler.END
@@ -415,15 +404,6 @@ async def rented_number_callback(update: Update, context: ContextTypes) -> None:
 
     await update_message(status)
     
-    #every 3 minute check if number is active
-    #if active, update message
-    #if not, update message
-    # while True:
-    #     await asyncio.sleep(100)
-    #     status = sms_pool.retrive_rental_status(key)
-    #     if status['status']['available'] == 1:
-    #         await update_message(status)
-    #         break
     async def check_status_periodically():
         while True:
             print('check_status_periodically')

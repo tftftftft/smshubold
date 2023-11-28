@@ -23,13 +23,27 @@ otp_not_listed_price = 1.5
 
 
 otp_cancel_button = [
-    [InlineKeyboardButton("Cancel", callback_data='cancel_action')]
+    [InlineKeyboardButton("❌ Cancel", callback_data='cancel_action')]
 ]
 
 otp_service_not_found = [
-    [InlineKeyboardButton("Service is not in a list", callback_data='yes_confirmation_otp')],
-    [InlineKeyboardButton("Cancel", callback_data='cancel_action')],
+    [InlineKeyboardButton("🔍 Service is not in the list", callback_data='yes_confirmation_otp')],
+    [InlineKeyboardButton("❌ Cancel", callback_data='cancel_action')],
 ]
+
+# Function to update the message
+async def update_message(start_time: float, expires_in: int, query: Update, context: ContextTypes) -> int:
+    current_time = asyncio.get_event_loop().time()
+    elapsed_time = current_time - start_time
+    remaining_time = max(expires_in - elapsed_time, 0)
+    await query.message.edit_text(
+        f"📞 *Your Phone Number:* +`{context.user_data['number']}`\n"
+        f"🔐 Use this number to receive your OTP for *{context.user_data['serive']}*.\n"
+        f"⏳ This number will expire in {int(remaining_time)} seconds. Act fast!",
+        reply_markup=InlineKeyboardMarkup(otp_cancel_button),
+        parse_mode="Markdown"
+    )
+    return remaining_time
 
 
 ASK_SERVICE_NAME, CONFIRMATION, ORDER_PHONE_NUMBER_OTP, NOT_LISTED_CONFIRMATION, RESEND_OTP = range(5)
@@ -39,12 +53,13 @@ async def ask_for_service_name(update: Update, context: ContextTypes) -> int:
 
     print('ask for service name')
     
+    
     query = update.callback_query
     await query.answer()
     
     
     ask_servie_messge = await query.edit_message_text(
-        "Please enter service name (Gmail)",
+        "✍️ Please enter the service name",
         reply_markup=InlineKeyboardMarkup(otp_cancel_button)
     )
     
@@ -86,7 +101,7 @@ async def otp_confirmation(update: Update, context: ContextTypes) -> int:
     if response['price'] is None:
 
         await update.message.reply_text(
-            f"Service {service_name_input} was not found. If the service is not on a list - please choose 'Service is not on a list'.",
+            f"❌ Service {service_name_input} was not found. If the service is not on a list - please choose 'Service is not on a list'.",
             reply_markup=InlineKeyboardMarkup(otp_service_not_found)
         )
         
@@ -102,12 +117,21 @@ async def otp_confirmation(update: Update, context: ContextTypes) -> int:
     await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=context.user_data['ask_service_name_message_id'])
     
     ##ask for confirmation
-    keyboard = [[InlineKeyboardButton(f"Yes - {otp_service_price}$", callback_data='yes_confirmation_otp'), InlineKeyboardButton("No", callback_data='no_confirmation_otp')]]
+    keyboard = [
+        [InlineKeyboardButton(f"✅ Yes - {otp_service_price}$", callback_data='yes_confirmation_otp'), 
+        InlineKeyboardButton("❌ No", callback_data='cancel_action')]
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    confirmation_message = (
+    f"💵 The service *{context.user_data['service_name']}* will cost {otp_service_price}$.\n"
+    "🤔 Do you want to proceed with the purchase?"
+    )
 
-    context.user_data['ask_confirmation_message_id'] =  await update.message.reply_text(
-        f"The service {context.user_data['service_name']}. Do you want to proceed?",
-        reply_markup=reply_markup
+    context.user_data['ask_confirmation_message_id'] = await update.message.reply_text(
+        confirmation_message,
+        reply_markup=reply_markup,
+        parse_mode="Markdown"
     )
     
     
@@ -124,13 +148,13 @@ async def not_enough_balance(update: Update, context: ContextTypes) -> int:
     await update.callback_query.message.delete()
     
     keyboard = [
-        [InlineKeyboardButton("Deposit", callback_data="Deposit")]
+        [InlineKeyboardButton("💰 Deposit", callback_data="Deposit")]
     ]
     reply_keyboard = InlineKeyboardMarkup(keyboard)
 
 
     await update.callback_query.message.reply_text(
-            "You don't have enough balance to rent this number.",
+            "❗ You don't have enough balance to rent this number.",
             reply_markup=reply_keyboard
         )
 
@@ -154,41 +178,35 @@ async def order_phone_number_otp(update: Update, context: ContextTypes) -> int:
         ###save data for later
         context.user_data['order_id'] = response['order_id']
         context.user_data['number'] = response['number']
+        context.user_data['serive'] = response['service']
     ###if not - ask for service name again
     else:
-        await query.message.edit_text("There was an error processing your order.")
+        await query.message.edit_text("❗ There was an error processing your order.")
         return await cancel(update, context)
 
     
-    # expires_in = response.get('expires_in', 0)
-    expires_in = 30
+    expires_in = response.get('expires_in', 0)
     start_time = asyncio.get_event_loop().time()  # Get the current loop time
 
     # Function to update the message
-    async def update_message():
-        current_time = asyncio.get_event_loop().time()
-        elapsed_time = current_time - start_time
-        remaining_time = max(expires_in - elapsed_time, 0)
-        await query.message.edit_text(
-            f"Your phone number is {response['number']}.\n"
-            f"Please use this number to receive your OTP for {response['service']}.\n"
-            f"This number will expire in {int(remaining_time)} seconds.",
-            reply_markup=InlineKeyboardMarkup(otp_cancel_button)
-        )
-        return remaining_time
 
-    await update_message()
+
+    await update_message(start_time=start_time, expires_in=expires_in, query=query, context=context)
 
     async def accept_message() -> int:
         while True:
             print('while')
+        
             await asyncio.sleep(5)
             
-            remaining_time = await update_message()
+            if context.user_data.get('conversation_ended'):
+                break
+            
+            remaining_time = await update_message(start_time=start_time, expires_in=expires_in, query=query, context=context)
             print(remaining_time)
             if remaining_time <= 15:
                 await query.message.edit_text(
-                    "The phone number has expired.",
+                    "❗ The phone number has expired.",
                     reply_markup=InlineKeyboardMarkup(otp_cancel_button)
                     )
                 break
@@ -200,7 +218,7 @@ async def order_phone_number_otp(update: Update, context: ContextTypes) -> int:
                 
                 ###update balance
                 if firebase_conn.decrease_balance(update.effective_user.id, 1) is False:
-                    await query.message.edit_text("There was an error processing your order.")
+                    await query.message.edit_text("❗ There was an error processing your order.")
                 
                 keyboard = [
                     [InlineKeyboardButton("Use number again? 1$", callback_data='resend_otp')],
@@ -215,9 +233,9 @@ async def order_phone_number_otp(update: Update, context: ContextTypes) -> int:
                     )                
                 return RESEND_OTP
             
-    result =  asyncio.create_task(accept_message())
+    asyncio.create_task(accept_message())
     
-    # return RESEND_OTP
+    return RESEND_OTP #?
 
 async def resend_otp(update: Update, context: ContextTypes) -> int:
     query = update.callback_query
@@ -233,31 +251,20 @@ async def resend_otp(update: Update, context: ContextTypes) -> int:
     print(response)
     if response['success'] == 1:
     
-            
         expires_in = 500
-        start_time = asyncio.get_event_loop().time()  # Get the current loop time
+        start_time = asyncio.get_event_loop().time()  # Get the current loop time        
 
-        # Function to update the message
-        async def update_message():
-            current_time = asyncio.get_event_loop().time()
-            elapsed_time = current_time - start_time
-            remaining_time = max(expires_in - elapsed_time, 0)
-            await query.message.edit_text(
-                f"Phone number Reactivated!\n"
-                f"Phone number is {context.user_data['number']}.\n"
-                f"Please use this number to receive your OTP for {context.user_data['service_name']}.\n"
-                f"This number will expire in {int(remaining_time)} seconds."
-            )
-            return remaining_time
-
-        await update_message()
+        await update_message(start_time=start_time, expires_in=expires_in, query=query, context=context)
 
     async def chreck_for_resend_message():
         while True:
             print('while')
             await asyncio.sleep(5)
             
-            remaining_time = await update_message()
+            if context.user_data.get('conversation_ended'):
+                break
+            
+            remaining_time = await update_message(start_time=start_time, expires_in=expires_in, query=query, context=context)
             if remaining_time <= 15:
                 await query.message.edit_text("The phone number has expired.")
                 return await cancel(update, context)
@@ -280,14 +287,18 @@ async def resend_otp(update: Update, context: ContextTypes) -> int:
                 
                 
     
-    return await asyncio.create_task(chreck_for_resend_message())
-        
+    asyncio.create_task(chreck_for_resend_message())
+    
+    return ConversationHandler.END
+         
     
     
 async def cancel(update: Update, context: ContextTypes) -> int:
     """End the conversation."""
     print('cancel')
-    
+            
+    context.user_data['conversation_ended'] = True
+        
     if update.callback_query is not None:
         print('callback')
         await update.callback_query.answer()

@@ -3,15 +3,18 @@ from telegram import ReplyKeyboardMarkup, Update
 from telegram.ext import (
     ContextTypes,
 )
+import asyncio
+
+from telegram.constants import ParseMode
 
 from models.models import User
 
 from database.methods import firebase_conn
 
 keyboard = [
-        ["Receive SMS"],  # First row with one button
-        ["My Profile", "Technical Support"] # Second row with two buttons
-    ]
+    ["📩 Receive SMS"],  # First row with one button
+    ["👤 My Profile", "🔧 Technical Support"]  # Second row with two buttons
+]
 
 # Start, show Greeting and an option to see the terms of use (button)
 async def start(update: Update, context: ContextTypes) -> None:
@@ -27,12 +30,25 @@ async def start(update: Update, context: ContextTypes) -> None:
         user = User(balance=0)
         print(userid)
         firebase_conn.add('users', userid, user.to_dict())
-    
-    await update.message.reply_text(
-        f"Hi {username}! I'm a bot that can help you to receive an SMS to a REAL USA phone number.\n\n"
-        "Choose an option from below.",
-        reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True),
+        
+    # Path to your local image file
+    image_path = './files/logo.jpg'
+        
+    greeting_message = (
+        f"🇺🇸 Welcome, @{username}! 🇺🇸\n"
+        "📱 SMS verification with **REAL** USA numbers\n\n"
+        "👇 Select available options below!"
     )
+    
+        # Send a photo with the message and inline keyboard
+    with open(image_path, 'rb') as photo:
+        await update.message.reply_photo(
+            photo=photo,
+            caption=greeting_message,
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True, is_persistent=True),
+        )
+    
     
 async def menu(update: Update, context: ContextTypes) -> None:
     '''Show the menu again.'''
@@ -41,12 +57,14 @@ async def menu(update: Update, context: ContextTypes) -> None:
     await query.answer()
     
     ###delete previous message
-    # await query.message.delete()
+    await query.message.delete()
     
-    await query.message.reply_text(
+    menu_message = await query.message.reply_text(
         "Choose an option from below.",
         reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True, is_persistent=True),
     )
+    
+    context.user_data['menu_message_id'] = menu_message.message_id
     
 
 
