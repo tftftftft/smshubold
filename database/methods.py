@@ -49,7 +49,11 @@ class FirebaseService:
         
     def delete(self, ref: str, key: str) -> None:
         """ Delete data from the specified reference and key. """
-        db.reference(f'{ref}/{key}').delete()
+        try:
+            db.reference(f'{ref}/{key}').delete()
+        except Exception as e:
+            logger.error(f'Error deleting data from Firebase: {e}')
+            return None
         
     def get_user_balance(self, user_id: str) -> float:
         """Retrieve the user's balance."""
@@ -168,6 +172,17 @@ class FirebaseService:
         
         # Retrieve the rental data
         return self.get(ref, key)
+    
+    #delete rental number from user's rental list
+    def delete_rental(self, user_id: str, rental_id: str) -> None:
+        """Delete the rental data from the user's rental list."""
+        
+        # Define the reference and key for the user's rental list
+        ref = 'users'
+        key = f'{user_id}/rentals/{rental_id}'
+        
+        # Delete the rental data
+        self.delete(ref, key)
         
 
     

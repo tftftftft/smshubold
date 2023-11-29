@@ -34,18 +34,26 @@ class SMSPool:
         return url
     
     # POST https://api.smspool.net/service/retrieve_all
-    def get_service_list(self) -> dict:
+    async def get_service_list(self) -> dict:
         url = self.construct_url('service/retrieve_all')
-        response = requests.post(url)
-        print(response.json())
-        return response.json()
+        try:
+            response = requests.post(url)
+            print(response.json())
+            return response.json()
+        except Exception as e:
+            print(e)
+            return None
     
     #curl --location 'https://api.smspool.net/request/price' --form 'key="98EIv8oI4SBsBF0Nmow1x1Wwiz8xqRoA"' --form 'country="US"' --form 'service="Facebook"' --form 'pool="1"'
-    def get_service_price(self, country: str, service: str) -> dict:
+    async def get_service_price(self, country: str, service: str) -> dict:
         url = self.construct_url('request/price', params={'key': self.api_key, 'country': country, 'service': service, 'pool': 0})
-        response = requests.post(url)
-        print(response.json())
-        return response.json()
+        try:
+            response = requests.post(url)
+            print(response.json())
+            return response.json()
+        except Exception as e:
+            print(e)
+            return None
     
     #     curl --location 'https://api.smspool.net/purchase/sms' \
     # --form 'key="Your API key"' \
@@ -55,22 +63,27 @@ class SMSPool:
     # --form 'quantity=""' \ Quantity of numbers ordered
     # --form 'create_token=""' Optional param; set to 1 if you'd like to create a token link that anyone can access.
 
-    def order_sms(self, country: str, service: str, pricing_option: int, quantity: int, create_token: int) -> dict:
+    async def order_sms(self, country: str, service: str, pricing_option: int, quantity: int, create_token: int) -> dict:
         url = self.construct_url('purchase/sms', params={'key': self.api_key, 'country': country, 'service': service, 'pricing_option': pricing_option, 'quantity': quantity, 'create_token': create_token})
-        response = requests.post(url)
+        response = requests.post(url, timeout=30)
         print(response.json())
         return response.json()
+
+    
     
     #     curl --location 'https://api.smspool.net/sms/check' \
     # --form 'orderid=""' \
     # --form 'key="Your API key"'
     
-    def check_sms(self, orderid: str) -> dict:
+    async def check_sms(self, orderid: str) -> dict:
         url = self.construct_url('sms/check', params={'key': self.api_key, 'orderid': orderid})
-        response = requests.post(url)
-        print(response.json())
-        return response.json()
-    
+        try:
+            response = requests.post(url)
+            print(response.json())
+            return response.json()
+        except Exception as e:
+            print(e)
+            return None
     
     # Resend
     # Resend the order. Keep in mind that some pools will have a charge per resend.
@@ -85,12 +98,15 @@ class SMSPool:
     #     curl --location 'https://api.smspool.net/sms/cancel' \
     # --form 'orderid=""' \
     # --form 'key="Your API key"'
-    def resend(self, orderid: str) -> dict:
+    async def resend(self, orderid: str) -> dict:
         url = self.construct_url('sms/resend', params={'key': self.api_key, 'orderid': orderid})
-        response = requests.post(url)
-        print(response.json())
-        return response.json()
-    
+        try:
+            response = requests.post(url, timeout=5)
+            print(response.json())
+            return response.json()
+        except Exception as e:
+            print(e)
+            return None
     
     
     def cancel_sms(self, orderid: str) -> dict:
@@ -105,28 +121,42 @@ class SMSPool:
     #     curl --location 'https://api.smspool.net/rental/retrieve_all' \
     # --form 'key="Your API key"' \
     # --form 'type="0 | 1"'  Choose whether the rental is extendable or not with a 0 or 1
-    def retrive_rentals_extendable(self) -> dict:
+    async def retrive_rentals_extendable(self) -> dict:
         url = self.construct_url('rental/retrieve_all', params={'key': self.api_key, 'type': 1})
-        response = requests.post(url)
-        print(response.json())
-        return response.json()
-    
-    def retrive_rentals_not_extendable(self) -> dict:
+        try:
+            response = requests.post(url)
+            print(response.json())
+            return response.json()
+        except Exception as e:
+            print(e)
+            return None
+        
+        
+    async def retrive_rentals_not_extendable(self) -> dict:
         url = self.construct_url('rental/retrieve_all', params={'key': self.api_key, 'type': 0})
-        response = requests.post(url)
-        print(response.json())
-        return response.json()
-    
+        try:
+            response = requests.post(url)
+            print(response.json())
+            return response.json()
+        except Exception as e:
+            print(e)
+            return None
+            
+            
     #     curl --location 'https://api.smspool.net/purchase/rental' \
     # --form 'key="Your API key"' \
     # --form 'id="1"' \ Rental ID retrieved from Retrieve Rental IDs
     # --form 'days="30"' \
     # --form 'service_id=""' Optional value on which service you'd purchase the rental for
-    def order_rental(self, id: int, days: Rent_Days, service_id: Optional[int] = None) -> dict:
+    async def order_rental(self, id: int, days: Rent_Days, service_id: Optional[int] = None) -> dict:
         url = self.construct_url('purchase/rental', params={'key': self.api_key, 'id': id, 'days': days, 'service_id': service_id})
-        response = requests.post(url)
-        print(response.json())
-        return response.json()
+        try:
+            response = requests.post(url)
+            print(response.json())
+            return response.json()
+        except Exception as e:
+            print(e)
+            return None
     
     #response example:
     # {'success': 1, 'message': 'You have ordered a rental, it will be issued instantly.', 'phonenumber': '16809101906', 'days': 30, 'rental_code': '7xabp0RL', 'expiry': 1703552020}
@@ -157,20 +187,28 @@ class SMSPool:
     #     curl --location 'https://api.smspool.net/rental/retrieve_messages' \
     # --form 'key="Your API key"' \
     # --form 'rental_code=""'
-    def retrive_rental_messages(self, rental_code: str) -> dict:
+    async def retrive_rental_messages(self, rental_code: str) -> dict:
         url = self.construct_url('rental/retrieve_messages', params={'key': self.api_key, 'rental_code': rental_code})
-        response = requests.post(url)
-        print(response.json())
-        return response.json()
-    
+        try:
+            response = requests.post(url)
+            print(response.json())
+            return response.json()
+        except Exception as e:
+            print(e)
+            return None
+            
     #     curl --location 'https://api.smspool.net/rental/retrieve_status' \
     # --form 'key="Your API key"' \
     # --form 'rental_code=""'
-    def retrive_rental_status(self, rental_code: str) -> dict:
+    async def retrive_rental_status(self, rental_code: str) -> dict:
         url = self.construct_url('rental/retrieve_status', params={'key': self.api_key, 'rental_code': rental_code})
-        response = requests.post(url)
-        print(response.json())
-        return response.json()
+        try:
+            response = requests.post(url, timeout=5)
+            print(response.json())
+            return response.json()
+        except Exception as e:
+            print(e)
+            return None
     
         #     curl --location 'https://api.smspool.net/rental/retrieve' \
         # --form 'key="Your API key"'
