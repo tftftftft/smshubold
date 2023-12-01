@@ -58,43 +58,43 @@ async def update_message(start_time: float, expires_in: int, phone_number: str, 
 
 async def accept_message(user_id: int,order_id: str, service_otp_price: float, start_time: float, expires_in: float, phone_number: str, service_name:str, query: CallbackQuery, context: ContextTypes) -> int:
     while True:
-        # print('while')
+        print('while')
     
         await asyncio.sleep(30)
         
-        # if context.user_data.get('conversation_ended'):
-        #     break
+        if context.user_data.get('conversation_ended'):
+            break
         
-        # remaining_time = await update_message(start_time=start_time, expires_in=expires_in, phone_number=phone_number, service_name=service_name, query=query, context=context)
-        # print(remaining_time)
-        # if remaining_time <= 15:
-        #     await query.message.edit_text(
-        #         "❗ The phone number has expired.",
-        #         reply_markup=InlineKeyboardMarkup(otp_cancel_button)
-        #         )
-        #     break
+        remaining_time = await update_message(start_time=start_time, expires_in=expires_in, phone_number=phone_number, service_name=service_name, query=query, context=context)
+        print(remaining_time)
+        if remaining_time <= 15:
+            await query.message.edit_text(
+                "❗ The phone number has expired.",
+                reply_markup=InlineKeyboardMarkup(otp_cancel_button)
+                )
+            break
             
 
-        # check_response = await sms_pool.check_sms(order_id)
-        # print(check_response)
-        # if check_response['status'] == 3:
+        check_response = await sms_pool.check_sms(order_id)
+        print(check_response)
+        if check_response['status'] == 3:
             
-        #     ###update balance
-        #     if firebase_conn.decrease_balance(user_id, service_otp_price) is False:
-        #         await query.message.edit_text("❗ There was an error processing your order.")
+            ###update balance
+            if firebase_conn.decrease_balance(user_id, service_otp_price) is False:
+                await query.message.edit_text("❗ There was an error processing your order.")
             
-        #     keyboard = [
-        #         [InlineKeyboardButton("Use number again? 1$", callback_data='resend_otp')],
-        #         [InlineKeyboardButton("Back to menu", callback_data='menu')]
-        #     ]
-        #     reply_markup = InlineKeyboardMarkup(keyboard)
+            keyboard = [
+                [InlineKeyboardButton("Use number again? - 1$", callback_data='resend_otp')],
+                [InlineKeyboardButton("Back to menu", callback_data='menu')]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
                 
-        #     ###update message
-        #     await query.message.edit_text(
-        #         f"Your OTP is {check_response['full_sms']}.",
-        #         reply_markup=reply_markup
-        #         )                
-        #     return RESEND_OTP
+            ###update message
+            await query.message.edit_text(
+                f"Your OTP is {check_response['full_sms']}.",
+                reply_markup=reply_markup
+                )                
+            return RESEND_OTP
         
         
 async def chreck_for_resend_message(user_id: int, order_id: str, start_time: float, expires_in: float, query: CallbackQuery, update: Update, context: ContextTypes):
@@ -326,7 +326,7 @@ async def order_phone_number_otp(update: Update, context: ContextTypes) -> int:
 
         context.user_data['conversation_ended'] = False
                 
-        asyncio.to_thread(accept_message(update.effective_user.id,context.user_data['order_id'], context.user_data['service_otp_price'],
+        asyncio.create_task(accept_message(update.effective_user.id,context.user_data['order_id'], context.user_data['service_otp_price'],
                                         start_time, expires_in, context.user_data['number'], context.user_data['service'], query, context))
         
     ###if not - ask for service name again
@@ -353,6 +353,7 @@ async def resend_otp(update: Update, context: ContextTypes) -> int:
 
         await update_message(start_time=start_time, expires_in=expires_in, phone_number=context.user_data['number'], service_name=context.user_data['service'], query=query, context=context)
 
+        ### set conversation_ended to False for cancel
         context.user_data['conversation_ended'] = False
         
         asyncio.to_thread(chreck_for_resend_message(user_id=update.effective_user.id, order_id=context.user_data['order_id'], start_time=start_time, 

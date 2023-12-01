@@ -10,14 +10,16 @@ from bot.sms.handler import receive_sms, my_rented_numbers_callback, rental_conv
 from bot.sms.rent_history import  rented_number_callback, rental_history
 from bot.sms.otp_handler import ask_for_service_name, otp_confirmation, order_phone_number_otp, resend_otp, cancel
 # from bot.profile.handler import my_profile, add_balance_callback
-from bot.profile.handler import deposit_conv, my_profile
+from bot.profile.handler import my_profile, process_crypto, ask_amount
 from bot.start.handler import start, menu
 
 from services.smspool_objects import sms_pool
+from services.cryptomus.cryptomus_objects import cryptomus
+from services.cryptomus.cryptomus import app
+
 from database.methods import firebase_conn
 
 
-import asyncio
 
 from telegram import Update
 from telegram.ext import (
@@ -49,6 +51,7 @@ def main() -> None:
 
     logger.info("Starting bot")
     
+    app.run(port=5000, debug=True)
   
     application = Application.builder().token(os.getenv("BOT_TOKEN")).build()
     
@@ -64,7 +67,9 @@ def main() -> None:
     
     #profile callback
     # application.add_handler(CallbackQueryHandler(add_balance_callback, pattern='^add_balance$'))
-    application.add_handler(deposit_conv)
+    # application.add_handler(deposit_conv)
+    application.add_handler(CallbackQueryHandler(ask_amount, pattern='^deposit$'))
+    application.add_handler(CallbackQueryHandler(process_crypto, pattern='^(10|20|50|100|200|500)$'))
     
     #otp convo
     # application.add_handler(otp_conv)
