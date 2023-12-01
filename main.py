@@ -1,6 +1,7 @@
 import logging
 from typing import Dict
 import os
+import threading
 from dotenv import load_dotenv
 load_dotenv()  # This loads the variables from .env
 
@@ -15,7 +16,7 @@ from bot.start.handler import start, menu
 
 from services.smspool_objects import sms_pool
 from services.cryptomus.cryptomus_objects import cryptomus
-from services.cryptomus.cryptomus import app
+from services.cryptomus.flask_listeners import app
 
 from database.methods import firebase_conn
 
@@ -43,7 +44,8 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-
+def run_flask_app():
+    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
 
 def main() -> None:
     """Run the bot."""
@@ -51,7 +53,7 @@ def main() -> None:
 
     logger.info("Starting bot")
     
-    app.run(port=5000, debug=True)
+    threading.Thread(target=run_flask_app).start()
   
     application = Application.builder().token(os.getenv("BOT_TOKEN")).build()
     

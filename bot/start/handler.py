@@ -49,6 +49,8 @@ async def start(update: Update, context: ContextTypes) -> None:
             reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True, is_persistent=True),
         )
     
+
+    
     
 async def menu(update: Update, context: ContextTypes) -> None:
     '''Show the menu again.'''

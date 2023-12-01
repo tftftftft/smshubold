@@ -123,12 +123,11 @@ async def process_crypto(update: Update, context: ContextTypes) -> None:
         invoice_url = result['result']['url']
         
         #create message with invoice url
+        confirm_button = InlineKeyboardButton("✅ I've Paid", callback_data='menu')
         await query.message.edit_text(
-            f"Please pay the following invoice 👇",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💳 Pay Invoice", url=invoice_url)], cancel_button])
+            f"Please pay the following invoice 👇\nAfter completing the payment, press 'I've Paid'.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💳 Pay Invoice", url=invoice_url)], [confirm_button]])
         )
-        
-        await menu(update, context)
                 
     except Exception as e:
         print(e)
@@ -139,7 +138,6 @@ async def process_crypto(update: Update, context: ContextTypes) -> None:
         )
         return await menu(update, context)
 
-    
 
 
 
