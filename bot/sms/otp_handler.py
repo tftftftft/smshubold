@@ -385,7 +385,7 @@ async def not_enough_balance(update: Update, context: ContextTypes) -> int:
     await update.callback_query.message.delete()
     
     keyboard = [
-        [InlineKeyboardButton("💰 Deposit", callback_data="Deposit")]
+        [InlineKeyboardButton("💰 Deposit", callback_data="deposit")]
     ]
     reply_keyboard = InlineKeyboardMarkup(keyboard)
 

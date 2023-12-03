@@ -195,10 +195,16 @@ async def order_final(update: Update, context: ContextTypes) -> int:
             return await cancel(update, context)
     else:
         #if not, send error message
+        keyboard = [
+            [InlineKeyboardButton("💰 Deposit", callback_data="deposit")]
+        ]
+        reply_keyboard = InlineKeyboardMarkup(keyboard)
+        
         await query.edit_message_text(
-            f"Error: Not enough balance.",
+            "❗ You don't have enough balance to rent this number.",
+            reply_markup=reply_keyboard
         )
-        return await cancel(update, context)
+
         
 
     
