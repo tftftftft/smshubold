@@ -38,7 +38,7 @@ class SMSPool:
         url = self.construct_url('service/retrieve_all')
         try:
             response = requests.post(url)
-            print(response.json())
+            # print(response.json())
             return response.json()
         except Exception as e:
             print(e)
@@ -49,7 +49,7 @@ class SMSPool:
         url = self.construct_url('request/price', params={'key': self.api_key, 'country': country, 'service': service, 'pool': 0})
         try:
             response = requests.post(url)
-            print(response.json())
+            # print(response.json())
             return response.json()
         except Exception as e:
             print(e)

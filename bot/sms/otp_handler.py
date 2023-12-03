@@ -18,10 +18,15 @@ from telegram.ext import (
 from services.smspool_objects import sms_pool
 from database.methods import firebase_conn
 from bot.start.handler import menu, light_menu
+from utilities.utils import user_data_store
 
 otp_service_price = 1
 otp_service_high_price = 2
 otp_not_listed_price = 1.5
+
+
+
+
 
 otp_cancel_button = [
     [InlineKeyboardButton("❌ Cancel", callback_data='menu')]
@@ -190,7 +195,7 @@ async def otp_order_number(update: Update, query: CallbackQuery, context: Contex
     
     ###order phone number
     try:
-        response = await sms_pool.order_sms('US', context.user_data['service_name'], 0, 1, 0)
+        response = await sms_pool.order_sms('US', context.user_data['otp_service_name'], 0, 1, 0)
         
         await loading_message.delete()
         
@@ -231,8 +236,14 @@ async def ask_for_service_name(update: Update, context: ContextTypes) -> int:
         reply_markup=InlineKeyboardMarkup(otp_cancel_button)
     )
     
+    user_id = update.effective_user.id
+    value = user_data_store[user_id] = {'otp_ask_service_name_message_id': ask_service_message.message_id}
+    print(value, 'ask service message id')
     ###save message id for future deletion
-    context.user_data['otp_ask_service_name_message_id'] = ask_service_message.message_id
+    # context.user_data['otp_ask_service_name_message_id'] = ask_service_message.message_id
+    # print(context.user_data['otp_ask_service_name_message_id'], 'ask service message id')
+
+  
     
     return CONFIRMATION
 
@@ -249,9 +260,16 @@ async def otp_confirmation(update: Update, context: ContextTypes) -> int:
     await update.message.delete()
     
     # Delete the message asking for service name
-    await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=context.user_data['otp_ask_service_name_message_id'])
-    
-    context.user_data['service_name'] = None
+    user_id = update.effective_user.id
+    message_id = user_data_store.get(user_id, {}).get('otp_ask_service_name_message_id')
+    print(message_id, 'message id')
+    print(user_data_store, 'user data store')
+    if message_id:
+        await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=message_id)
+        
+
+
+    context.user_data['otp_service_name'] = None
     #get service ID if service name is in the list
     service_id, service_name = await lookup_service(all_services, service_name_input)
     
@@ -259,10 +277,10 @@ async def otp_confirmation(update: Update, context: ContextTypes) -> int:
     
     if service_id is not None:
         print(service_id, service_name)
-        context.user_data['service_id'] = service_id 
-        context.user_data['service_name'] = service_name
+        context.user_data['otp_service_id'] = service_id 
+        context.user_data['otp_service_name'] = service_name
             
-        response = await sms_pool.get_service_price('US', context.user_data['service_name'])    
+        response = await sms_pool.get_service_price('US', context.user_data['otp_service_name'])    
     
         ##get price from response 
         ##{'price': '0.26', 'high_price': '0.75', 'pool': 1, 'success_rate': '100.00'}
@@ -270,40 +288,39 @@ async def otp_confirmation(update: Update, context: ContextTypes) -> int:
         ##if response is not available - ask for service name again
         ##{'price': None, 'high_price': None, 'pool': None, 'success_rate': '100.00'}
 
-        context.user_data['service_otp_price'] = await count_price(response['price'])
-        print(context.user_data['service_otp_price'])
+        context.user_data['otp_service_price'] = await count_price(response['price'])
+        print(context.user_data['otp_service_price'])
         
         ##ask for confirmation
         otp_confirmation_keyboard = [
-            [InlineKeyboardButton(f"✅ Yes - {context.user_data['service_otp_price']}$", callback_data='yes_confirmation_otp'), 
+            [InlineKeyboardButton(f"✅ Yes - {context.user_data['otp_service_price']}$", callback_data='yes_confirmation_otp'), 
             InlineKeyboardButton("❌ No", callback_data='menu')]
         ]
         reply_markup = InlineKeyboardMarkup(otp_confirmation_keyboard)
         
         confirmation_message = (
-        f"💵 The service *{context.user_data['service_name']}* will cost {context.user_data['service_otp_price']}$.\n"
+        f"💵 The service *{context.user_data['otp_service_name']}* will cost {context.user_data['otp_service_price']}$.\n"
         "🤔 Do you want to proceed with the purchase?"
         )
 
-        context.user_data['ask_confirmation_message_id'] = await update.message.reply_text(
+        context.user_data['otp_ask_confirmation_message_id'] = await update.message.reply_text(
             confirmation_message,
             reply_markup=reply_markup,
             parse_mode="Markdown"
         )
         
         
-        return ORDER_PHONE_NUMBER_OTP
     else:
         await update.message.reply_text(
             f"❌ Service {service_name_input} was not found. If the service is not on a list - please choose 'Service is not on a list'.",
             reply_markup=InlineKeyboardMarkup(otp_service_not_found)
         )
         
-        context.user_data['service_name'] = "Not Listed"
-        context.user_data['service_otp_price'] = otp_not_listed_price
+        context.user_data['otp_service_name'] = "Not Listed"
+        context.user_data['otp_service_price'] = otp_not_listed_price
         
-        return ORDER_PHONE_NUMBER_OTP
-    
+
+    return ConversationHandler.END    
     
 
 async def not_enough_balance(update: Update, context: ContextTypes) -> int:
@@ -332,9 +349,9 @@ async def order_phone_number_otp(update: Update, context: ContextTypes) -> int:
     query = update.callback_query
     await query.answer()
     
-    print(context.user_data['service_otp_price'])
+    print(context.user_data['otp_service_price'])
     ###check if enough balance
-    if firebase_conn.check_if_enough_balance(update.effective_user.id, context.user_data['service_otp_price']) is False:
+    if firebase_conn.check_if_enough_balance(update.effective_user.id, context.user_data['otp_service_price']) is False:
         return await not_enough_balance(update, context)
     
     response = await otp_order_number(update, query, context)
@@ -343,9 +360,9 @@ async def order_phone_number_otp(update: Update, context: ContextTypes) -> int:
     if response['order_id'] is not None:
         # order_id = response['order_id']
         ###save data for later
-        context.user_data['order_id'] = response['order_id']
-        context.user_data['number'] = response['number']
-        context.user_data['service'] = response['service']
+        context.user_data['otp_order_id'] = response['order_id']
+        context.user_data['otp_number'] = response['number']
+        context.user_data['otp_service'] = response['service']
         
         
         ### start accepting messages
@@ -353,12 +370,12 @@ async def order_phone_number_otp(update: Update, context: ContextTypes) -> int:
         start_time = asyncio.get_event_loop().time()  # Get the current loop time
 
         ### update message
-        await update_message(start_time=start_time, expires_in=expires_in, phone_number=context.user_data['number'], service_name=context.user_data['service'], order_id=response['order_id'], query=query, context=context)
+        await update_message(start_time=start_time, expires_in=expires_in, phone_number=context.user_data['otp_number'], service_name=context.user_data['otp_service'], order_id=response['order_id'], query=query, context=context)
 
         context.user_data['conversation_ended'] = False
                 
-        asyncio.create_task(accept_message(update.effective_user.id,context.user_data['order_id'], context.user_data['service_otp_price'],
-                                        start_time, expires_in, context.user_data['number'], context.user_data['service'], query, context))
+        asyncio.create_task(accept_message(update.effective_user.id,context.user_data['otp_order_id'], context.user_data['otp_service_price'],
+                                        start_time, expires_in, context.user_data['otp_number'], context.user_data['otp_service'], query, context))
         
     ###if not - ask for service name again
     else:
@@ -370,25 +387,25 @@ async def resend_otp(update: Update, context: ContextTypes) -> int:
     await query.answer()
     
     ###check if enough balance
-    if firebase_conn.check_if_enough_balance(update.effective_user.id, context.user_data['service_otp_price']) is False:
+    if firebase_conn.check_if_enough_balance(update.effective_user.id, context.user_data['otp_service_price']) is False:
         await not_enough_balance(update, context)
         return ConversationHandler.END
     
     ###resend sms
-    response = await sms_pool.resend(context.user_data['order_id'])
+    response = await sms_pool.resend(context.user_data['otp_order_id'])
     print(response)
     if response['success'] == 1:
     
         expires_in = 500
         start_time = asyncio.get_event_loop().time()  # Get the current loop time        
 
-        await update_message(start_time=start_time, expires_in=expires_in, phone_number=context.user_data['number'], service_name=context.user_data['service'], order_id=context.user_data['order_id'], query=query, context=context)
+        await update_message(start_time=start_time, expires_in=expires_in, phone_number=context.user_data['otp_number'], service_name=context.user_data['otp_service'], order_id=context.user_data['otp_order_id'], query=query, context=context)
 
         ### set conversation_ended to False for cancel
         context.user_data['conversation_ended'] = False
         
-        asyncio.create_task(check_for_resend_message(user_id=update.effective_user.id, order_id=context.user_data['order_id'], start_time=start_time, 
-                                                      expires_in=expires_in, phone_number=context.user_data['number'], service_name=context.user_data['service'], query=query, update=update, context=context))
+        asyncio.create_task(check_for_resend_message(user_id=update.effective_user.id, order_id=context.user_data['otp_order_id'], start_time=start_time, 
+                                                      expires_in=expires_in, phone_number=context.user_data['otp_number'], service_name=context.user_data['otp_service'], query=query, update=update, context=context))
     else:
         await query.message.edit_text("❗ The number doesn't support resend.")
         return await menu(update, context)
@@ -432,3 +449,17 @@ async def cancel(update: Update, context: ContextTypes) -> int:
 #         CallbackQueryHandler(cancel, pattern='^no_confirmation_otp$')
 #     ]
 # )
+
+otp_conv = ConversationHandler(
+    entry_points=[CallbackQueryHandler(ask_for_service_name, pattern='^one_time_message$')],
+    states={
+        CONFIRMATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, otp_confirmation)],
+        # ORDER_PHONE_NUMBER_OTP: [CallbackQueryHandler(order_phone_number_otp, pattern='^yes_confirmation_otp$')],
+        # RESEND_OTP: [CallbackQueryHandler(resend_otp, pattern='^resend_otp$')],
+    },
+    fallbacks=[
+        CallbackQueryHandler(cancel, pattern='^cancel_action$'),
+        CallbackQueryHandler(cancel, pattern='^no_confirmation_otp$')
+    ]
+)
+

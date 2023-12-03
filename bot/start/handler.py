@@ -25,6 +25,16 @@ async def start(update: Update, context: ContextTypes) -> None:
     print(userid)
     # print(context.user_data['rental_type'])
     
+    # delete user's /start message if it is not first message in chat
+    if context.user_data.get('start_message_id') is not None:
+        await update.message.delete()
+    
+    # # delete start message
+    # if context.user_data.get('start_message_id') is not None:
+    #     print(context.user_data['start_message_id'])
+    #     await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=context.user_data['start_message_id'])
+
+    
     # Add user to database if it doesn't exist
     if firebase_conn.exists('users', userid) is False:
         user = User(balance=0)
@@ -42,12 +52,15 @@ async def start(update: Update, context: ContextTypes) -> None:
     
         # Send a photo with the message and inline keyboard
     with open(image_path, 'rb') as photo:
-        await update.message.reply_photo(
+        start_messge_id = await update.message.reply_photo(
             photo=photo,
             caption=greeting_message,
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True, is_persistent=True),
         )
+        
+    #save message id to delete it later
+    context.user_data['menu_message_id'] = start_messge_id.message_id
     
 
     
