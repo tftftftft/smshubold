@@ -18,7 +18,7 @@ from telegram.ext import (
 
 from bot.start.handler import menu
 from bot.sms.rent_history import my_rented_numbers_callback
-from utilities.utils import user_data_store
+# from utilities.utils import user_data_store
 
 
 from services.smspool_objects import sms_pool
@@ -33,6 +33,10 @@ all_services_price = 30
 
 cancel_button = [
     [InlineKeyboardButton("❌ Cancel", callback_data='menu')]
+]
+
+cancel_button_convo = [
+    [InlineKeyboardButton("❌ Cancel", callback_data='cancel')]
 ]
 
 rental_faq_buttons = [
@@ -117,10 +121,10 @@ async def process_any_service_rental_choice(update: Update, context: ContextType
     
     #set current rental type to any service by id: None - any service, 817 - not listed, X - specific service
     context.user_data['rental_service_id'] = None
-    # context.user_data['rental_order_id'] = 6
-    user_id = update.effective_user.id
-    value = user_data_store[user_id] = {'rental_order_id': 6}
-    print(user_data_store, "user_data_store")
+    context.user_data['rental_order_id'] = 6
+    # user_id = update.effective_user.id
+    # value = user_data_store[user_id] = {'rental_order_id': 6}
+    # print(user_data_store, "user_data_store")
     context.user_data['rental_service_name'] = 'Any service'
     
     await order_final(update, context)
@@ -155,15 +159,14 @@ async def order_final(update: Update, context: ContextTypes) -> int:
     print(rental_type, 'rental_type')
     
     
-    print(user_data_store, "user_data_store, order final")
+
     
     if firebase_conn.check_if_enough_balance(query.from_user.id, all_services_price):
         #order rental number for any service
         # print(context.user_data['rental_service_id'])
         user_id = update.effective_user.id
-        print(user_data_store.get(user_id).get('rental_order_id'))
-        print(user_data_store, "user_data_store")
-        order_response  = await sms_pool.order_rental(user_data_store.get(update.effective_user.id).get('rental_order_id'), 30, context.user_data['rental_service_id'])
+        # order_response  = await sms_pool.order_rental(user_data_store.get(update.effective_user.id).get('rental_order_id'), 30, context.user_data['rental_service_id'])
+        order_response  = await sms_pool.order_rental(context.user_data['rental_order_id'], 30, context.user_data['rental_service_id'])
         if order_response['success'] == 1:
             # If successful, deduct 30$ from balance
             firebase_conn.decrease_balance(query.from_user.id, all_services_price)
@@ -208,14 +211,15 @@ async def ask_for_service(update: Update, context: ContextTypes) -> int:
     context.user_data['rental_service_id'] = None
     context.user_data['rental_service_name'] = None
     
-    user_id = update.effective_user.id
-    user_data_store[user_id] = {'rental_order_id': 7}
+    # user_id = update.effective_user.id
+    # user_data_store[user_id] = {'rental_order_id': 7}
     
+    context.user_data['rental_order_id'] = 7
     
     
     ask_servie_message = await query.edit_message_text(
         "Enter the name of the service for which you want to rent a number:",
-        reply_markup=InlineKeyboardMarkup(cancel_button)
+        reply_markup=InlineKeyboardMarkup(cancel_button_convo)
     )
     
     context.user_data['rental_ask_service_name_message_id'] = ask_servie_message.message_id
@@ -246,8 +250,6 @@ async def validate_service(update: Update, context: ContextTypes) -> int:
             context.user_data['rental_service_id'] = service['ID']
             context.user_data['rental_service_name'] = service['name']
             break
-
-    print(context.user_data['rental_service_id'], context.user_data['rental_service_name'])
           
     if context.user_data['rental_service_id'] is not None:
         print(context.user_data['rental_service_id'], context.user_data['rental_service_name'])
@@ -314,7 +316,7 @@ async def cancel(update: Update, context: ContextTypes) -> int:
     # )
     await menu(update, context)
     
-    # return ConversationHandler.END
+    return ConversationHandler.END
 
 
     
@@ -336,6 +338,7 @@ async def cancel(update: Update, context: ContextTypes) -> int:
     
 rental_conv = ConversationHandler(
     entry_points=[CallbackQueryHandler(ask_for_service, pattern='^specific_service_rental$')],
+    conversation_timeout=3600,
     states={
         VALIDATE_SERVICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, validate_service)]
     },

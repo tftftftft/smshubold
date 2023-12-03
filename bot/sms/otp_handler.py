@@ -1,5 +1,6 @@
 from datetime import datetime
 import asyncio
+import json
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from telegram.constants import ParseMode
 from telegram.ext import (
@@ -24,8 +25,26 @@ otp_service_price = 1
 otp_service_high_price = 2
 otp_not_listed_price = 1.5
 
-
-
+list_of_states = [
+    [InlineKeyboardButton("AL", callback_data='Alabama'), InlineKeyboardButton("AK", callback_data='Alaska'), InlineKeyboardButton("AZ", callback_data='Arizona')],
+    [InlineKeyboardButton("AR", callback_data='Arkansas'), InlineKeyboardButton("CA", callback_data='California'), InlineKeyboardButton("CO", callback_data='Colorado')],
+    [InlineKeyboardButton("CT", callback_data='Connecticut'), InlineKeyboardButton("DE", callback_data='Delaware'), InlineKeyboardButton("FL", callback_data='Florida')],
+    [InlineKeyboardButton("GA", callback_data='Georgia'), InlineKeyboardButton("HI", callback_data='Hawaii'), InlineKeyboardButton("ID", callback_data='Idaho')],
+    [InlineKeyboardButton("IL", callback_data='Illinois'), InlineKeyboardButton("IN", callback_data='Indiana'), InlineKeyboardButton("IA", callback_data='Iowa')],
+    [InlineKeyboardButton("KS", callback_data='Kansas'), InlineKeyboardButton("KY", callback_data='Kentucky'), InlineKeyboardButton("LA", callback_data='Louisiana')],
+    [InlineKeyboardButton("ME", callback_data='Maine'), InlineKeyboardButton("MD", callback_data='Maryland'), InlineKeyboardButton("MA", callback_data='Massachusetts')],
+    [InlineKeyboardButton("MI", callback_data='Michigan'), InlineKeyboardButton("MN", callback_data='Minnesota'), InlineKeyboardButton("MS", callback_data='Mississippi')],
+    [InlineKeyboardButton("MO", callback_data='Missouri'), InlineKeyboardButton("MT", callback_data='Montana'), InlineKeyboardButton("NE", callback_data='Nebraska')],
+    [InlineKeyboardButton("NV", callback_data='Nevada'), InlineKeyboardButton("NH", callback_data='New Hampshire'), InlineKeyboardButton("NJ", callback_data='New Jersey')],
+    [InlineKeyboardButton("NM", callback_data='New Mexico'), InlineKeyboardButton("NY", callback_data='New York'), InlineKeyboardButton("NC", callback_data='North Carolina')],
+    [InlineKeyboardButton("ND", callback_data='North Dakota'), InlineKeyboardButton("OH", callback_data='Ohio'), InlineKeyboardButton("OK", callback_data='Oklahoma')],
+    [InlineKeyboardButton("OR", callback_data='Oregon'), InlineKeyboardButton("PA", callback_data='Pennsylvania'), InlineKeyboardButton("RI", callback_data='Rhode Island')],
+    [InlineKeyboardButton("SC", callback_data='South Carolina'), InlineKeyboardButton("SD", callback_data='South Dakota'), InlineKeyboardButton("TN", callback_data='Tennessee')],
+    [InlineKeyboardButton("TX", callback_data='Texas'), InlineKeyboardButton("UT", callback_data='Utah'), InlineKeyboardButton("VT", callback_data='Vermont')],
+    [InlineKeyboardButton("VA", callback_data='Virginia'), InlineKeyboardButton("WA", callback_data='Washington'), InlineKeyboardButton("WV", callback_data='West Virginia')],
+    [InlineKeyboardButton("WI", callback_data='Wisconsin'), InlineKeyboardButton("WY", callback_data='Wyoming'), InlineKeyboardButton("Any", callback_data='any_state')],
+    [InlineKeyboardButton("Cancel", callback_data='cancel_action')],
+]
 
 
 otp_cancel_button = [
@@ -38,8 +57,8 @@ back_to_menu_button = [
 ]
 
 otp_service_not_found = [
-    [InlineKeyboardButton("🔍 Service is not in the list - 2$", callback_data='yes_confirmation_otp')],
-    [InlineKeyboardButton("❌ Cancel", callback_data='menu')],
+    [InlineKeyboardButton("🔍 Service is not in the list - 1.5$", callback_data='yes_confirmation_otp')],
+    [InlineKeyboardButton("❌ Cancel", callback_data='cancel_action')],
 ]
 
 async def refund_number(update: Update, context: ContextTypes) -> int:
@@ -195,7 +214,7 @@ async def otp_order_number(update: Update, query: CallbackQuery, context: Contex
     
     ###order phone number
     try:
-        response = await sms_pool.order_sms('US', context.user_data['otp_service_name'], 0, 1, 0)
+        response = await sms_pool.order_sms(country='US', service=context.user_data['otp_service_name'], pricing_option=0, quantity=1, areacodes=context.user_data['otp_areacodes'], create_token=0)
         
         await loading_message.delete()
         
@@ -216,7 +235,7 @@ async def otp_order_number(update: Update, query: CallbackQuery, context: Contex
 
 
 ##########################
-ASK_SERVICE_NAME, CONFIRMATION, ORDER_PHONE_NUMBER_OTP, NOT_LISTED_CONFIRMATION, RESEND_OTP = range(5)
+ASK_SERVICE_NAME, ASK_FOR_STATE, CONFIRMATION, ORDER_PHONE_NUMBER_OTP, NOT_LISTED_CONFIRMATION, RESEND_OTP = range(6)
     
     
 async def ask_for_service_name(update: Update, context: ContextTypes) -> int:
@@ -227,6 +246,21 @@ async def ask_for_service_name(update: Update, context: ContextTypes) -> int:
     query = update.callback_query
     await query.answer()
     
+    # get state from query
+    state = query.data
+    
+    # if state == 'any_state': set empty areacodes
+    if state == 'any_state':
+        context.user_data['otp_areacodes'] = []
+        # read us_area_codes.json and get codes based on state
+    # else set areacodes based on state
+    else: 
+        with open ('./files/us_area_codes.json', 'r') as f:
+            file = json.load(f)
+            areacodes = file[state]
+            #save areacodes for future use
+            context.user_data['otp_areacodes'] = areacodes
+        
     ###for future cancel  
     context.user_data['conversation_ended'] = False
     
@@ -236,21 +270,40 @@ async def ask_for_service_name(update: Update, context: ContextTypes) -> int:
         reply_markup=InlineKeyboardMarkup(otp_cancel_button)
     )
     
-    user_id = update.effective_user.id
-    value = user_data_store[user_id] = {'otp_ask_service_name_message_id': ask_service_message.message_id}
-    print(value, 'ask service message id')
+    # user_id = update.effective_user.id
+    # value = user_data_store[user_id] = {'otp_ask_service_name_message_id': ask_service_message.message_id}
+    # print(value, 'ask service message id')
     ###save message id for future deletion
-    # context.user_data['otp_ask_service_name_message_id'] = ask_service_message.message_id
-    # print(context.user_data['otp_ask_service_name_message_id'], 'ask service message id')
+    context.user_data['otp_ask_service_name_message_id'] = ask_service_message.message_id
+    print(context.user_data['otp_ask_service_name_message_id'], 'ask service message id')
 
   
     
     return CONFIRMATION
 
+async def ask_for_state(update: Update, context: ContextTypes) -> int:
+    # Inline keyboard with a list of states with short code (TX, MD, NY)
+    
+    query = update.callback_query
+    await query.answer()
+    
+    await query.edit_message_text(
+        "🇺🇸 Please choose the state",
+        reply_markup=InlineKeyboardMarkup(list_of_states)
+    )
+    
+    return ASK_SERVICE_NAME
+    
+
 async def otp_confirmation(update: Update, context: ContextTypes) -> int:
     
     ### check if service name is valid
     ### check price of service
+    
+    print(context.user_data['otp_ask_service_name_message_id'], 'ask service message id')
+    
+
+    print(context.user_data['otp_areacodes'], 'areacodes')
     
     service_name_input = update.message.text.lower()
     
@@ -260,12 +313,12 @@ async def otp_confirmation(update: Update, context: ContextTypes) -> int:
     await update.message.delete()
     
     # Delete the message asking for service name
-    user_id = update.effective_user.id
-    message_id = user_data_store.get(user_id, {}).get('otp_ask_service_name_message_id')
-    print(message_id, 'message id')
-    print(user_data_store, 'user data store')
-    if message_id:
-        await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=message_id)
+    # user_id = update.effective_user.id
+    # message_id = user_data_store.get(user_id, {}).get('otp_ask_service_name_message_id')
+    # print(message_id, 'message id')
+    # print(user_data_store, 'user data store')
+    if context.user_data['otp_ask_service_name_message_id'] is not None:
+        await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=context.user_data['otp_ask_service_name_message_id'])
         
 
 
@@ -294,7 +347,7 @@ async def otp_confirmation(update: Update, context: ContextTypes) -> int:
         ##ask for confirmation
         otp_confirmation_keyboard = [
             [InlineKeyboardButton(f"✅ Yes - {context.user_data['otp_service_price']}$", callback_data='yes_confirmation_otp'), 
-            InlineKeyboardButton("❌ No", callback_data='menu')]
+            InlineKeyboardButton("❌ No", callback_data='cancel_action')]
         ]
         reply_markup = InlineKeyboardMarkup(otp_confirmation_keyboard)
         
@@ -356,8 +409,8 @@ async def order_phone_number_otp(update: Update, context: ContextTypes) -> int:
     
     response = await otp_order_number(update, query, context)
 
-    ###check if order was successful
-    if response['order_id'] is not None:
+    # ###check if order was successful
+    if response.get('order_id') is not None:    
         # order_id = response['order_id']
         ###save data for later
         context.user_data['otp_order_id'] = response['order_id']
@@ -379,8 +432,11 @@ async def order_phone_number_otp(update: Update, context: ContextTypes) -> int:
         
     ###if not - ask for service name again
     else:
-        await query.message.edit_text("❗ There was an error processing your order.")
-        await menu(update, context)
+        await query.message.edit_text(
+            "❗ Out of stock or chosen state is unavailable.",
+            reply_markup=InlineKeyboardMarkup(otp_cancel_button),
+            )
+
 
 async def resend_otp(update: Update, context: ContextTypes) -> int:
     query = update.callback_query
@@ -394,7 +450,7 @@ async def resend_otp(update: Update, context: ContextTypes) -> int:
     ###resend sms
     response = await sms_pool.resend(context.user_data['otp_order_id'])
     print(response)
-    if response['success'] == 1:
+    if response.get('success') == 1:
     
         expires_in = 500
         start_time = asyncio.get_event_loop().time()  # Get the current loop time        
@@ -407,8 +463,10 @@ async def resend_otp(update: Update, context: ContextTypes) -> int:
         asyncio.create_task(check_for_resend_message(user_id=update.effective_user.id, order_id=context.user_data['otp_order_id'], start_time=start_time, 
                                                       expires_in=expires_in, phone_number=context.user_data['otp_number'], service_name=context.user_data['otp_service'], query=query, update=update, context=context))
     else:
-        await query.message.edit_text("❗ The number doesn't support resend.")
-        return await menu(update, context)
+        await query.message.edit_text(
+            "❗ The number does not support resend.",
+            reply_markup=InlineKeyboardMarkup(otp_cancel_button),
+            )
          
     
     
@@ -431,7 +489,7 @@ async def cancel(update: Update, context: ContextTypes) -> int:
     #         "Back to menu"
     #     )
 
-    await light_menu(update, context)
+    await menu(update, context)
     
     return ConversationHandler.END
 
@@ -451,8 +509,10 @@ async def cancel(update: Update, context: ContextTypes) -> int:
 # )
 
 otp_conv = ConversationHandler(
-    entry_points=[CallbackQueryHandler(ask_for_service_name, pattern='^one_time_message$')],
+    entry_points=[CallbackQueryHandler(ask_for_state, pattern='^one_time_message$')],
+    conversation_timeout=3600,
     states={
+        ASK_SERVICE_NAME: [CallbackQueryHandler(ask_for_service_name, pattern='^(Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey|New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina|South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming|any_state)')],
         CONFIRMATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, otp_confirmation)],
         # ORDER_PHONE_NUMBER_OTP: [CallbackQueryHandler(order_phone_number_otp, pattern='^yes_confirmation_otp$')],
         # RESEND_OTP: [CallbackQueryHandler(resend_otp, pattern='^resend_otp$')],
