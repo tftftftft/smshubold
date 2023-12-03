@@ -7,9 +7,9 @@ load_dotenv()  # This loads the variables from .env
 
 
 from bot.support.handler import technical_support
-from bot.sms.handler import receive_sms, my_rented_numbers_callback, rental_conv
+from bot.sms.handler import receive_sms, my_rented_numbers_callback, rental_conv, ask_for_number_type, ask_for_service, process_number_type_choice, validate_service, order_final, ask_for_service, process_number_type_choice, validate_service, order_final
 from bot.sms.rent_history import  rented_number_callback, rental_history
-from bot.sms.otp_handler import ask_for_service_name, otp_confirmation, order_phone_number_otp, resend_otp, cancel
+from bot.sms.otp_handler import ask_for_service_name, otp_confirmation, order_phone_number_otp, resend_otp, cancel, refund_number
 # from bot.profile.handler import my_profile, add_balance_callback
 from bot.profile.handler import my_profile, process_crypto, ask_amount
 from bot.start.handler import start, menu
@@ -78,6 +78,16 @@ def main() -> None:
     
     #rental convo
     application.add_handler(rental_conv)
+    
+    #rental callbacks
+    # application.add_handler(CallbackQueryHandler(ask_for_number_type, pattern='^rent_number$'))
+    # application.add_handler(CallbackQueryHandler(ask_for_service, pattern='^specific_service_rental$'))
+    # application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, validate_service))
+    # application.add_handler(CallbackQueryHandler(order_final, pattern='^confirm_order_any_service$'))
+    # application.add_handler(CallbackQueryHandler(order_final, pattern='^confirm_order$'))
+    # application.add_handler(CallbackQueryHandler(order_final, pattern='^service_not_listed$'))
+    
+    
         
     # sms callbacks
     application.add_handler(CallbackQueryHandler(my_rented_numbers_callback, pattern='^my_rented_numbers$'))
@@ -89,6 +99,7 @@ def main() -> None:
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, otp_confirmation))
     application.add_handler(CallbackQueryHandler(order_phone_number_otp, pattern='^yes_confirmation_otp$'))
     application.add_handler(CallbackQueryHandler(resend_otp, pattern='^resend_otp$')),
+    application.add_handler(CallbackQueryHandler(refund_number, pattern='^otp_cancel_refund_.*$')),
     application.add_handler(CallbackQueryHandler(cancel, pattern='^cancel_action$')),
     application.add_handler(CallbackQueryHandler(cancel, pattern='^no_confirmation_otp$'))
     

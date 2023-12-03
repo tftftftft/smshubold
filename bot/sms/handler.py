@@ -39,7 +39,8 @@ rental_faq_buttons = [
 
 rental_choose_service_buttons = [
     [InlineKeyboardButton("🌐 Any service - 30$", callback_data='any_service_rental')],
-    [InlineKeyboardButton("🔍 Specific service - 10$", callback_data='specific_service_rental')],
+    [InlineKeyboardButton("🔍 Specific service - 15$", callback_data='specific_service_rental')],
+    [InlineKeyboardButton("❌ Cancel", callback_data='menu')]
 ]
 
 rental_service_not_found_buttons = [
@@ -146,7 +147,7 @@ async def order_final(update: Update, context: ContextTypes) -> int:
     if firebase_conn.check_if_enough_balance(query.from_user.id, all_services_price):
         #order rental number for any service
         print(context.user_data['service_id'])
-        order_response  = sms_pool.order_rental(context.user_data['id'], 30, context.user_data['service_id'])
+        order_response  = await sms_pool.order_rental(context.user_data['id'], 30, context.user_data['service_id'])
         if order_response['success'] == 1:
             # If successful, deduct 30$ from balance
             firebase_conn.decrease_balance(query.from_user.id, all_services_price)
@@ -231,7 +232,7 @@ async def validate_service(update: Update, context: ContextTypes) -> int:
         await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=context.user_data['rental_ask_service_name_message_id'])
     
     ##get service id
-    all_services = sms_pool.get_service_list()
+    all_services = await sms_pool.get_service_list()
     
     #get service ID if service name is in the list
     for service in all_services:
@@ -313,7 +314,6 @@ rental_conv = ConversationHandler(
     entry_points=[CallbackQueryHandler(ask_for_number_type, pattern='^rent_number$')],
     # conversation_timeout=30,  # Timeout after 5 minutes of inactivity
     states={
-        # ASK_FOR_NUMBER_TYPE: [CallbackQueryHandler(ask_for_number_type, pattern='^continue_rental_1$')],
         PROCESS_NUMBER_TYPE_CHOICE: [CallbackQueryHandler(process_number_type_choice)],
         ASK_FOR_SERVICE: [CallbackQueryHandler(ask_for_service, pattern='^specific_service_rental$')],
         VALIDATE_SERVICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, validate_service)],

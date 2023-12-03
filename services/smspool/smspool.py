@@ -69,6 +69,19 @@ class SMSPool:
         print(response.json())
         return response.json()
 
+    #     curl --location 'https://api.smspool.net/sms/cancel' \
+    # --form 'orderid=""' \
+    # --form 'key="Your API key"'
+    
+    def cancel_sms(self, orderid: str) -> dict:
+        url = self.construct_url('sms/cancel', params={'key': self.api_key, 'orderid': orderid})
+        try:
+            response = requests.post(url)
+            print(response.json())
+            return response.json()
+        except Exception as e:
+            print(e)
+            return None
     
     
     #     curl --location 'https://api.smspool.net/sms/check' \
@@ -108,12 +121,7 @@ class SMSPool:
             print(e)
             return None
     
-    
-    def cancel_sms(self, orderid: str) -> dict:
-        url = self.construct_url('sms/cancel', params={'key': self.api_key, 'orderid': orderid})
-        response = requests.post(url)
-        print(response.json())
-        return response.json()
+
     
     ########################################
     #RENTALS

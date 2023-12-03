@@ -33,11 +33,16 @@ async def technical_support(update: Update, context: ContextTypes) -> None:
         "You can also visit our FAQ section for quick answers to common queries. Just click the buttons below for more information or to get in touch with us directly. 👇"
     )
 
-    # Send a photo with the message and inline keyboard
-    with open(image_path, 'rb') as photo:
-        await update.message.reply_photo(
-            photo=photo,
-            caption=message,
-            parse_mode=ParseMode.MARKDOWN,
-            reply_markup=reply_markup
-        )
+    # # Send a photo with the message and inline keyboard
+    # with open(image_path, 'rb') as photo:
+    #     await update.message.reply_photo(
+    #         photo=photo,
+    #         caption=message,
+    #         parse_mode=ParseMode.MARKDOWN,
+    #         reply_markup=reply_markup
+    #     )
+    await update.message.reply_text(
+        message,
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=reply_markup
+    )

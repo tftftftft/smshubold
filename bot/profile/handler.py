@@ -141,6 +141,20 @@ async def process_crypto(update: Update, context: ContextTypes) -> None:
 
 
 
+# message saying that the payment is being processed
+# delete message in 10 seconds
+async def payment_successful(update: Update, context: ContextTypes, deposit: int) -> None:
+    
+    query = update.callback_query
+    await query.answer()
+    
+    payment_successful_message = await query.message.reply_text(
+        f"🎉 Payment Successful!\n",
+        f"Your deposit of {deposit} has been successfully processed. 🥳\n",
+    )
+    
+    return await menu(update, context)
+
 # async def cancel(update: Update, context: ContextTypes) -> int:
 #     """End the conversation."""
 #     print('cancel')

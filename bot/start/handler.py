@@ -60,6 +60,11 @@ async def menu(update: Update, context: ContextTypes) -> None:
     
     ###delete previous message
     await query.message.delete()
+
+    # if context.user_data.get('menu_message_id') is not None:
+    #     print(context.user_data['menu_message_id'])
+    #     await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=context.user_data['menu_message_id'])
+
     
     menu_message = await query.message.reply_text(
         "Choose an option from below.",
