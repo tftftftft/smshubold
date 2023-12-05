@@ -49,11 +49,12 @@ async def my_profile(update: Update, context: ContextTypes) -> None:
 
     # Send a message with the user's ID and the inline keyboard
     await update.message.reply_text(
-        f"🆔 *Your ID:* `{user_id}`\n"
+        f"🆔 <b>Your ID:</b> <code>{user_id}</code>\n"
         f"💰Your balance: {firebase_conn.get_user_balance(user_id)}$\n",
         reply_markup=reply_markup,
-        parse_mode=ParseMode.MARKDOWN
+        parse_mode=ParseMode.HTML
     )
+
     
 
 async def ask_amount(update: Update, context: ContextTypes) -> int:

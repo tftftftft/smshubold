@@ -46,16 +46,17 @@ async def start(update: Update, context: ContextTypes) -> None:
         
     greeting_message = (
         f"🇺🇸 Welcome, @{username}! 🇺🇸\n"
-        "📱 SMS verification with **REAL** USA numbers\n\n"
+        "📱 SMS verification with <b>REAL</b> USA numbers\n\n"
         "👇 Select available options below!"
     )
+
     
         # Send a photo with the message and inline keyboard
     with open(image_path, 'rb') as photo:
         start_messge_id = await update.message.reply_photo(
             photo=photo,
             caption=greeting_message,
-            parse_mode=ParseMode.MARKDOWN,
+            parse_mode=ParseMode.HTML,
             reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True, is_persistent=True),
         )
         

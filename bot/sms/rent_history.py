@@ -20,34 +20,39 @@ async def my_rented_numbers_callback(update: Update, context: ContextTypes) -> N
     
     rented_numbers = firebase_conn.get_rentals(query.from_user.id)
     
+    if rented_numbers is not None:
     #check expiration of each number and delete from db those that are expired
-    for key in list(rented_numbers.keys()):
-        print(rented_numbers[key]['expiry'])
-        days_left = (datetime.strptime(rented_numbers[key]['expiry'], '%Y-%m-%dT%H:%M:%SZ') - datetime.utcnow()).days
-        if days_left < 0:
-            firebase_conn.delete_rental(query.from_user.id, key)
-            del rented_numbers[key]
+        for key in list(rented_numbers.keys()):
+            print(rented_numbers[key]['expiry'])
+            days_left = (datetime.strptime(rented_numbers[key]['expiry'], '%Y-%m-%dT%H:%M:%SZ') - datetime.utcnow()).days
+            if days_left < 0:
+                firebase_conn.delete_rental(query.from_user.id, key)
+                del rented_numbers[key]
 
-    # Check if user has rented numbers
-    if not rented_numbers:
-        await query.message.edit_text("You don't have any rented numbers.")
+        # Check if user has rented numbers
+        if not rented_numbers:
+            await query.message.edit_text("You don't have any rented numbers.")
+            await menu(update, context)
+            return 
+
+        # Create a list of InlineKeyboardButton, one for each rented number
+        keyboard = []
+        for key, details in rented_numbers.items():
+            button_text = f"+{details['number']} - {details['service_name'] if details['service_name'] else 'Any service'}"
+            callback_data = f"rented_number_{key}"  # Use the unique key as callback data
+            keyboard.append([InlineKeyboardButton(button_text, callback_data=callback_data)])
+        #add cancel button
+        keyboard.append(
+            [InlineKeyboardButton(f"🔙 Back to Menu", callback_data='menu')])
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        # Send message with the inline keyboard
+        await query.message.edit_text("📱 Your rented numbers:", reply_markup=reply_markup)
+    else:
+        await query.message.edit_text("🔙 You don't have any rented numbers.")
         await menu(update, context)
-        return 
-
-    # Create a list of InlineKeyboardButton, one for each rented number
-    keyboard = []
-    for key, details in rented_numbers.items():
-        button_text = f"+{details['number']} - {details['service_name'] if details['service_name'] else 'Any service'}"
-        callback_data = f"rented_number_{key}"  # Use the unique key as callback data
-        keyboard.append([InlineKeyboardButton(button_text, callback_data=callback_data)])
-    #add cancel button
-    keyboard.append(
-        [InlineKeyboardButton(f"🔙 Back to Menu", callback_data='menu')])
-
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    # Send message with the inline keyboard
-    await query.message.edit_text("📱 Your rented numbers:", reply_markup=reply_markup)
+        return
 
 async def rented_number_callback(update: Update, context: ContextTypes) -> None:
     query = update.callback_query
@@ -95,7 +100,7 @@ async def rented_number_callback(update: Update, context: ContextTypes) -> None:
             f"⏳ <b>Expires In:</b> {days_left} days\n\n"
             f"{status_update_text}\n",
             reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
+            parse_mode=ParseMode.HTML
         )
 
     await update_message(status)

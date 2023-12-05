@@ -289,10 +289,10 @@ async def service_not_found(update: Update, context: ContextTypes) -> int:
 async def service_found(update: Update, context: ContextTypes) -> int:
     
     await update.message.reply_text(
-        f"✅ Service found, *{context.user_data['rental_service_name']}* "
+        f"✅ Service found, <b>{context.user_data['rental_service_name']}</b> "
         f"It's price is {service_found_price} USD.",
         reply_markup=InlineKeyboardMarkup(rental_confirm_order_buttons),
-        parse_mode=ParseMode.MARKDOWN
+        parse_mode=ParseMode.MARKDOWN_V2
     )
     
     

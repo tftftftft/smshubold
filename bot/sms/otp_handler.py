@@ -95,11 +95,11 @@ async def update_message(start_time: float, expires_in: int, phone_number: str, 
     ]
     
     await query.message.edit_text(
-        f"📞 *Your Phone Number:* +`{phone_number}`\n"
-        f"🔐 Use this number to receive your OTP for *{service_name}*.\n"
+        f"📞 <b>Your Phone Number:</b> +<code>{phone_number}</code>\n"
+        f"🔐 Use this number to receive your OTP for <b>{service_name}</b>.\n"
         f"⏳ This number will expire in {int(remaining_time/60)} minutes. Act fast!",
         reply_markup=InlineKeyboardMarkup(otp_cancel_refund_button),
-        parse_mode="Markdown"
+        parse_mode=ParseMode.HTML
     )
     return remaining_time
 
@@ -140,9 +140,9 @@ async def accept_message(user_id: int,order_id: str, service_otp_price: float, s
                 
             ###update message
             await query.message.edit_text(
-                f"Your message is *{check_response['full_sms']}*.",
+                f"Your message is <b>{check_response['full_sms']}</b>.",
                 reply_markup=reply_markup,
-                parse_mode="Markdown"
+                parse_mode=ParseMode.HTML
                 )                
             break
         
@@ -169,9 +169,9 @@ async def check_for_resend_message(user_id: int, order_id: str, start_time: floa
             
             ###update message
             await query.message.edit_text(
-                f"Your message is *{check_response['full_sms']}*.",
+                f"Your message is <b>{check_response['full_sms']}</b>.",
                 reply_markup=InlineKeyboardMarkup(back_to_menu_button),
-                parse_mode="Markdown"
+                parse_mode=ParseMode.HTML
                 )
             
             break
@@ -352,14 +352,14 @@ async def otp_confirmation(update: Update, context: ContextTypes) -> int:
         reply_markup = InlineKeyboardMarkup(otp_confirmation_keyboard)
         
         confirmation_message = (
-        f"💵 The service *{context.user_data['otp_service_name']}* will cost {context.user_data['otp_service_price']}$.\n"
-        "🤔 Do you want to proceed with the purchase?"
+            f"💵 The service <b>{context.user_data['otp_service_name']}</b> will cost {context.user_data['otp_service_price']}$.\n"
+            "🤔 Do you want to proceed with the purchase?"
         )
 
         context.user_data['otp_ask_confirmation_message_id'] = await update.message.reply_text(
             confirmation_message,
             reply_markup=reply_markup,
-            parse_mode="Markdown"
+            parse_mode=ParseMode.HTML
         )
         
         
